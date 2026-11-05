@@ -5,8 +5,8 @@ class EnemySpriteSheet {
       SpriteAnimation.load(
         'enemy/atack_effect_bottom.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );
@@ -15,8 +15,8 @@ class EnemySpriteSheet {
       SpriteAnimation.load(
         'enemy/atack_effect_left.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );
@@ -25,8 +25,8 @@ class EnemySpriteSheet {
       SpriteAnimation.load(
         'enemy/atack_effect_right.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );
@@ -35,8 +35,8 @@ class EnemySpriteSheet {
       SpriteAnimation.load(
         'enemy/atack_effect_top.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );
@@ -77,7 +77,7 @@ class EnemySpriteSheet {
           ),
         ),
         runRight: SpriteAnimation.load(
-          'enemy/goblin/goblin_run.png',
+          'enemy/goblin/goblin_run_right.png',
           SpriteAnimationData.sequenced(
             amount: 4,
             stepTime: 0.1,
@@ -121,7 +121,7 @@ class EnemySpriteSheet {
           ),
         ),
         runRight: SpriteAnimation.load(
-          'enemy/imp/imp_run.png',
+          'enemy/imp/imp_run_right.png',
           SpriteAnimationData.sequenced(
             amount: 4,
             stepTime: 0.1,
@@ -165,7 +165,7 @@ class EnemySpriteSheet {
           ),
         ),
         runRight: SpriteAnimation.load(
-          'enemy/boss/boss_run.png',
+          'enemy/boss/boss_run_right.png',
           SpriteAnimationData.sequenced(
             amount: 4,
             stepTime: 0.1,

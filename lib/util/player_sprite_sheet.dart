@@ -13,8 +13,8 @@ class PlayerSpriteSheet {
   static Future<SpriteAnimation> attackEffectBottom() => SpriteAnimation.load(
         'player/atack_effect_bottom.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );
@@ -22,8 +22,8 @@ class PlayerSpriteSheet {
   static Future<SpriteAnimation> attackEffectLeft() => SpriteAnimation.load(
         'player/atack_effect_left.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );
@@ -31,8 +31,8 @@ class PlayerSpriteSheet {
   static Future<SpriteAnimation> attackEffectRight() => SpriteAnimation.load(
         'player/atack_effect_right.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );
@@ -40,8 +40,8 @@ class PlayerSpriteSheet {
   static Future<SpriteAnimation> attackEffectTop() => SpriteAnimation.load(
         'player/atack_effect_top.png',
         SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.1,
+          amount: 3,
+          stepTime: 0.08,
           textureSize: Vector2(16, 16),
         ),
       );

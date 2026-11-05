@@ -73,6 +73,10 @@ class GameState extends State<Game> {
           acceptedKeys: [
             LogicalKeyboardKey.space,
             LogicalKeyboardKey.keyZ,
+            LogicalKeyboardKey.arrowUp,
+            LogicalKeyboardKey.arrowDown,
+            LogicalKeyboardKey.arrowLeft,
+            LogicalKeyboardKey.arrowRight,
           ],
         ),
       );

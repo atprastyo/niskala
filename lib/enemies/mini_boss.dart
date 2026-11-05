@@ -85,18 +85,22 @@ class MiniBoss extends SimpleEnemy with WithCollision, WithLifeBar {
   void _execAttackRange(double dt) {
     if (_rangeInterval.update(dt)) {
       Sounds.attackRange();
+      final fireballSize = tileSize * 0.65;
+      final hitboxSize = tileSize / 3;
       attack.range(
+        useAngle: true,
         animation: GameSpriteSheet.fireBallAttackRight(),
         animationDestroy: GameSpriteSheet.fireBallExplosion(),
-        size: Vector2.all(tileSize * 0.65),
+        size: Vector2.all(fireballSize),
         damage: attackDamage,
         speed: speed * 2.5,
+        marginFromOrigin: 20,
         onDestroy: () {
           Sounds.explosion();
         },
         collision: RectangleHitbox(
-          size: Vector2(tileSize / 3, tileSize / 3),
-          position: Vector2(10, 5),
+          size: Vector2.all(hitboxSize),
+          position: Vector2.all((fireballSize - hitboxSize) / 2),
         ),
         lightingConfig: LightingConfig(
           radius: tileSize * 0.9,

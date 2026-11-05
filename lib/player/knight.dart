@@ -107,6 +107,7 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
       damage: attackDamage,
       animation: PlayerSpriteSheet.attackEffectRight(),
       size: Vector2.all(tileSize),
+      direction: direction,
     );
   }
 
@@ -115,18 +116,23 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
 
     Sounds.attackRange();
     decrementStamina(10);
+    final radAngle = direction.toRadians();
+    final fireballSize = tileSize * 0.65;
+    final hitboxSize = tileSize / 3;
     attack.range(
+      angle: radAngle,
       animation: GameSpriteSheet.fireBallAttackRight(),
       animationDestroy: GameSpriteSheet.fireBallExplosion(),
-      size: Vector2(tileSize * 0.65, tileSize * 0.65),
+      size: Vector2.all(fireballSize),
       damage: 10,
       speed: speed * 2.5,
+      marginFromOrigin: 20,
       onDestroy: () {
         Sounds.explosion();
       },
       collision: RectangleHitbox(
-        size: Vector2(tileSize / 3, tileSize / 3),
-        position: Vector2(10, 5),
+        size: Vector2.all(hitboxSize),
+        position: Vector2.all((fireballSize - hitboxSize) / 2),
       ),
       lightingConfig: LightingConfig(
         radius: tileSize * 0.9,
