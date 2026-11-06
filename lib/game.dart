@@ -20,7 +20,7 @@ import 'package:flutter/services.dart';
 
 class Game extends StatefulWidget {
   static bool useJoystick = true;
-  const Game({Key? key}) : super(key: key);
+  const Game({super.key});
 
   @override
   GameState createState() => GameState();
@@ -73,6 +73,8 @@ class GameState extends State<Game> {
           acceptedKeys: [
             LogicalKeyboardKey.space,
             LogicalKeyboardKey.keyZ,
+            LogicalKeyboardKey.shiftLeft,
+            LogicalKeyboardKey.shiftRight,
             LogicalKeyboardKey.arrowUp,
             LogicalKeyboardKey.arrowDown,
             LogicalKeyboardKey.arrowLeft,
@@ -90,6 +92,7 @@ class GameState extends State<Game> {
         ],
         player: Knight(
           Vector2(2 * tileSize, 3 * tileSize),
+          keyboardMovement: !Game.useJoystick,
         ),
         map: WorldMapByTiled(
           WorldMapReader.fromAsset('tiled/map.json'),
@@ -121,4 +124,3 @@ class GameState extends State<Game> {
     );
   }
 }
-

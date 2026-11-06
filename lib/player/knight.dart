@@ -1,5 +1,3 @@
-import 'dart:async' as async;
-
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/util/functions.dart';
@@ -20,19 +18,91 @@ import 'package:flutter/services.dart';
 // - onDie / onReceiveDamage → life.onDieListener / life.onReceiveDamageListener
 // - withOpacity → withValues
 class Knight extends SimplePlayer with WithLighting, WithCollision {
+  static const double spriteScale = 1.5;
   double attackDamage = 25;
   double stamina = 100;
-  async.Timer? _timerStamina;
+  double _staminaElapsed = 0;
+  bool _isAttacking = false;
+  bool _attackPending = false;
+  Direction _attackDirection = Direction.right;
+  final bool keyboardMovement;
+  final Set<LogicalKeyboardKey> _sprintKeys = {};
+
+  /// Threshold ratio of vertical velocity to horizontal velocity (|vel.y| / |vel.x|)
+  /// required to switch facing to vertical (up/down).
+  ///
+  /// - Standard Bonfire behavior: 1.0 (diagonal ties default to vertical).
+  /// - Default: 1.73 (~60° angle from horizontal, meaning the analog must be
+  ///   within ~30° of pure vertical).
+  ///
+  /// As long as |vel.y| <= |vel.x| * verticalThresholdRatio, the player keeps using
+  /// horizontal sprites (left and right).
+  double verticalThresholdRatio = 1.73;
+
+  Direction _resolveDirectionFromVelocity(Vector2 vel) {
+    if (vel.x.abs() <= 0.1 && vel.y.abs() <= 0.1) {
+      return direction;
+    }
+    if (vel.x.abs() > 0.1) {
+      hDirection = vel.x > 0 ? Direction.right : Direction.left;
+    }
+    if (vel.y.abs() > 0.1) {
+      vDirection = vel.y > 0 ? Direction.down : Direction.up;
+    }
+
+    if (vel.y.abs() > vel.x.abs() * verticalThresholdRatio) {
+      return vDirection;
+    } else {
+      return hDirection;
+    }
+  }
+
+  @override
+  set velocity(Vector2 newVelocity) {
+    super.velocity = newVelocity;
+    if (!newVelocity.isZero()) {
+      direction = _resolveDirectionFromVelocity(newVelocity);
+    }
+  }
+
+  bool get isAttacking => _isAttacking;
+  bool get isRunning => velocity.length > tileSize * 1.65;
+
+  static String facingFor(Direction facing) => switch (facing) {
+        Direction.up => 'up',
+        Direction.down => 'down',
+        Direction.left || Direction.upLeft || Direction.downLeft => 'left',
+        _ => 'right',
+      };
+
+  bool _selectLocomotion(DirectionAnimationMethod method) {
+    if (_isAttacking) return false;
+    if (method.name.startsWith('onPlayRun') && !isRunning) {
+      animation?.playOther(
+        'walk_${facingFor(direction)}',
+        flipX: false,
+        flipY: false,
+      );
+      return false;
+    }
+    return true;
+  }
+
   bool containKey = false;
   bool showObserveEnemy = false;
 
-  Knight(Vector2 position)
+  Knight(Vector2 position, {this.keyboardMovement = false})
       : super(
           animation: PlayerSpriteSheet.playerAnimations(),
-          size: Vector2.all(tileSize),
-          position: position,
+          size: Vector2.all(tileSize * spriteScale),
+          // Grow upward around the original tile-sized player's foot anchor.
+          position: position -
+              Vector2(
+                tileSize * (spriteScale - 1) / 2,
+                tileSize * (spriteScale - 1),
+              ),
           life: 200,
-          speed: tileSize * 2.5,
+          speed: tileSize * (keyboardMovement ? 1.4 : 2.5),
         ) {
     lighting.setup(
       LightingConfig(
@@ -41,6 +111,7 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
         color: Colors.deepOrangeAccent.withValues(alpha: 0.2),
       ),
     );
+    directionAnimation.onAnimationExecutionListener(_selectLocomotion);
     setupMovementByJoystick(intensityEnabled: true);
   }
 
@@ -57,8 +128,8 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
       RectangleHitbox(
         size: Vector2(valueByTileSize(8), valueByTileSize(8)),
         position: Vector2(
-          valueByTileSize(4),
-          valueByTileSize(8),
+          size.x / 2 - valueByTileSize(4),
+          size.y - valueByTileSize(8),
         ),
       ),
     );
@@ -67,6 +138,19 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
 
   @override
   void onJoystickAction(JoystickActionEvent event) {
+    if (event.id == LogicalKeyboardKey.shiftLeft ||
+        event.id == LogicalKeyboardKey.shiftRight) {
+      final key = event.id as LogicalKeyboardKey;
+      if (event.event == ActionEvent.DOWN) {
+        _sprintKeys.add(key);
+      } else if (event.event == ActionEvent.UP) {
+        _sprintKeys.remove(key);
+      }
+      if (keyboardMovement) {
+        speed = tileSize * (_sprintKeys.isEmpty ? 1.4 : 2.5);
+      }
+    }
+
     if (event.id == 0 && event.event == ActionEvent.DOWN) {
       actionAttack();
     }
@@ -99,20 +183,46 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   }
 
   void actionAttack() {
-    if (stamina < 15) return;
+    if (stamina < 15 || _isAttacking || isDead) return;
 
-    Sounds.attackPlayerMelee();
+    _isAttacking = true;
+    _attackPending = true;
+    _attackDirection = direction;
     decrementStamina(15);
+    velocity = Vector2.zero();
+    setupMovementByJoystick(intensityEnabled: true, enabled: false);
+    animation?.playOnceOther(
+      'combo_${facingFor(_attackDirection)}',
+      flipX: false,
+      runToTheEnd: true,
+      // Expand the 48px movement crop back to the full 96 x 80 attack cell.
+      size: Vector2(size.x * 2, size.y * 80 / 48),
+      offset: Vector2(-size.x / 2, -size.y / 3),
+      onFinish: () {
+        _applyComboDamage();
+        _isAttacking = false;
+        if (!isDead && !isRemoving) {
+          setupMovementByJoystick(intensityEnabled: true);
+          directionAnimation.playIdleAnimation();
+        }
+      },
+    );
+  }
+
+  void _applyComboDamage() {
+    if (!_attackPending || isDead || isRemoving) return;
+    _attackPending = false;
+    Sounds.attackPlayerMelee();
+    // The combo sheet already contains the slash; only spawn its damage area.
     attack.melee(
       damage: attackDamage,
-      animation: PlayerSpriteSheet.attackEffectRight(),
       size: Vector2.all(tileSize),
-      direction: direction,
+      direction: _attackDirection,
     );
   }
 
   void actionAttackRange() {
-    if (stamina < 10) return;
+    if (stamina < 10 || _isAttacking || isDead) return;
 
     Sounds.attackRange();
     decrementStamina(10);
@@ -145,7 +255,7 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   @override
   void update(double dt) {
     if (isDead) return;
-    _verifyStamina();
+    _verifyStamina(dt);
     vision.seeEnemy(
       radiusVision: tileSize * 6,
       notObserved: () {
@@ -158,24 +268,17 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
       },
     );
     super.update(dt);
+    if (_isAttacking && (animation?.fastAnimationcurrentIndex ?? 0) >= 1) {
+      _applyComboDamage();
+    }
   }
 
-  void _verifyStamina() {
-    if (_timerStamina == null) {
-      _timerStamina = async.Timer(
-        Duration(milliseconds: 150),
-        () {
-          _timerStamina = null;
-        },
-      );
-    } else {
-      return;
-    }
-
-    stamina += 2;
-    if (stamina > 100) {
-      stamina = 100;
-    }
+  void _verifyStamina(double dt) {
+    _staminaElapsed += dt;
+    final ticks = (_staminaElapsed / 0.15).floor();
+    if (ticks == 0) return;
+    _staminaElapsed -= ticks * 0.15;
+    stamina = (stamina + ticks * 2).clamp(0, 100).toDouble();
   }
 
   void decrementStamina(int i) {

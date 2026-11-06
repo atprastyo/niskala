@@ -1,0 +1,108 @@
+[
+  {
+    "action": "idle",
+    "source": "docs/art/male_hero-atlases/idle.png",
+    "columns": 5,
+    "rows": 6,
+    "frames": 10,
+    "directions": [
+      "right",
+      "up",
+      "down"
+    ]
+  },
+  {
+    "action": "walk",
+    "source": "docs/art/male_hero-atlases/walk.png",
+    "columns": 5,
+    "rows": 6,
+    "frames": 10,
+    "directions": [
+      "right",
+      "up",
+      "down"
+    ]
+  },
+  {
+    "action": "run",
+    "source": "docs/art/male_hero-atlases/run.png",
+    "columns": 5,
+    "rows": 6,
+    "frames": 10,
+    "directions": [
+      "right",
+      "up",
+      "down"
+    ]
+  },
+  {
+    "action": "combo_1",
+    "source": "docs/art/male_hero-atlases/combo_1.png",
+    "columns": 3,
+    "rows": 3,
+    "frames": 3,
+    "directions": [
+      "right",
+      "up",
+      "down"
+    ],
+    "frameSize": 512,
+    "drawScale": 0.75,
+    "bodyCenterX": 0.4,
+    "footBaselines": [
+      0.82,
+      0.84,
+      0.87
+    ]
+  },
+  {
+    "action": "combo_1_end",
+    "source": "docs/art/male_hero-atlases/combo_1_end.png",
+    "columns": 4,
+    "rows": 3,
+    "frames": 4,
+    "directions": [
+      "right",
+      "up",
+      "down"
+    ],
+    "frameSize": 512,
+    "drawScale": 0.62,
+    "bodyCenterX": 0.45,
+    "footBaselines": [
+      0.875,
+      0.875,
+      0.875
+    ]
+  },
+  {
+    "action": "fall",
+    "source": "docs/art/male_hero-atlases/fall.png",
+    "columns": 2,
+    "rows": 2,
+    "frames": 4,
+    "directions": [
+      "right"
+    ]
+  },
+  {
+    "action": "fall_loop",
+    "source": "docs/art/male_hero-atlases/fall_loop.png",
+    "columns": 3,
+    "rows": 1,
+    "frames": 3,
+    "directions": [
+      "right"
+    ]
+  },
+  {
+    "action": "jump",
+    "source": "docs/art/male_hero-atlases/jump.png",
+    "columns": 3,
+    "rows": 2,
+    "frames": 6,
+    "directions": [
+      "right"
+    ]
+  }
+]

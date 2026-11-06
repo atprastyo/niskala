@@ -39,6 +39,10 @@ flutter:
     - assets/images/enemy/mini_boss/
     - assets/images/enemy/boss/
     - assets/images/player/
+    - assets/images/player/arka/idle/
+    - assets/images/player/arka/run/
+    - assets/images/player/arka/attack_1/
+    - assets/images/player/arka/attack_2/
     - assets/images/items/
     - assets/images/tiled/
     - assets/audio/
