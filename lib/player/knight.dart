@@ -36,6 +36,15 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   final bool keyboardMovement;
   final Set<LogicalKeyboardKey> _sprintKeys = {};
 
+  /// Whether auto-aiming towards nearby enemies is enabled during attacks.
+  bool autoAimEnabled = true;
+
+  /// Maximum radius (in pixels) to detect and target enemies for melee attack.
+  double autoAimMeleeRadius = tileSize * 4.5;
+
+  /// Maximum radius (in pixels) to detect and target enemies for ranged attack.
+  double autoAimRangeRadius = tileSize * 8.0;
+
   /// Threshold ratio of vertical velocity to horizontal velocity (|vel.y| / |vel.x|)
   /// required to switch facing to vertical (up/down).
   ///
@@ -224,7 +233,55 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
     }
   }
 
+  /// Finds the closest living enemy within [maxRadius].
+  ///
+  /// Can optionally search [candidateEnemies] (useful for testing or scoped detection).
+  Enemy? findNearestEnemy({
+    double? maxRadius,
+    Iterable<Enemy>? candidateEnemies,
+  }) {
+    final radius = maxRadius ?? autoAimMeleeRadius;
+    Enemy? nearest;
+    double minDistanceSquared = radius * radius;
+    final myCenter = center;
+
+    final pool = candidateEnemies ??
+        (hasGameRef ? gameRef.livingEnemies() : const <Enemy>[]);
+    for (final enemy in pool) {
+      if (enemy.isRemoving || enemy.isDead) continue;
+      final distSq = myCenter.distanceToSquared(enemy.center);
+      if (distSq < minDistanceSquared) {
+        minDistanceSquared = distSq;
+        nearest = enemy;
+      }
+    }
+    return nearest;
+  }
+
+  /// Automatically turns the player towards the nearest living enemy within [maxRadius].
+  ///
+  /// Returns the targeted [Enemy], or `null` if no enemy was found in range.
+  Enemy? autoAimTowards({
+    double? maxRadius,
+    Iterable<Enemy>? candidateEnemies,
+  }) {
+    final target = findNearestEnemy(
+      maxRadius: maxRadius ?? autoAimMeleeRadius,
+      candidateEnemies: candidateEnemies,
+    );
+    if (target != null) {
+      final diff = target.center - center;
+      if (!diff.isZero()) {
+        direction = _resolveDirectionFromVelocity(diff);
+      }
+    }
+    return target;
+  }
+
   void _executeAttack1() {
+    if (autoAimEnabled) {
+      autoAimTowards(maxRadius: autoAimMeleeRadius);
+    }
     _isAttacking = true;
     _comboStep = 1;
     _comboQueued = false;
@@ -264,6 +321,9 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   }
 
   void _executeAttack2() {
+    if (autoAimEnabled) {
+      autoAimTowards(maxRadius: autoAimMeleeRadius);
+    }
     _isAttacking = true;
     _comboStep = 2;
     _comboQueued = false;
@@ -307,9 +367,20 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   void actionAttackRange() {
     if (stamina < 10 || _isAttacking || isDead) return;
 
+    Enemy? target;
+    if (autoAimEnabled) {
+      target = autoAimTowards(maxRadius: autoAimRangeRadius);
+    }
+
     Sounds.attackRange();
     decrementStamina(10);
-    final radAngle = direction.toRadians();
+    double radAngle;
+    if (target != null) {
+      radAngle = BonfireUtil.angleBetweenPoints(center, target.center);
+      if (radAngle == 0.0) radAngle = 0.0000001;
+    } else {
+      radAngle = direction.toRadians();
+    }
     final fireballSize = tileSize * 0.65;
     final hitboxSize = tileSize / 3;
     attack.range(
