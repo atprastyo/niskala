@@ -13,6 +13,11 @@ class MyBarLifeComponent extends InterfaceComponent {
   double maxStamina = 100;
   double stamina = 0;
 
+  int playerLevel = 1;
+  int currentExp = 0;
+  int expToNextLevel = 0;
+  double expRatio = 0.0;
+
   MyBarLifeComponent()
       : super(
           id: 1,
@@ -27,7 +32,13 @@ class MyBarLifeComponent extends InterfaceComponent {
       lifeValue = gameRef.player!.life.value;
       maxLife = gameRef.player!.life.max;
       if (gameRef.player is Knight) {
-        stamina = (gameRef.player as Knight).stamina;
+        final knight = gameRef.player as Knight;
+        stamina = knight.stamina;
+        maxStamina = knight.progression.maxStamina;
+        playerLevel = knight.progression.level;
+        currentExp = knight.progression.currentExp;
+        expToNextLevel = knight.progression.expToNextLevel;
+        expRatio = knight.progression.expProgressRatio;
       }
     }
     super.update(dt);
@@ -38,6 +49,8 @@ class MyBarLifeComponent extends InterfaceComponent {
     try {
       _drawLife(canvas);
       _drawStamina(canvas);
+      _drawExp(canvas);
+      _drawLevelBadge(canvas);
     } catch (e) {
       // ignore render errors
     }
@@ -71,7 +84,8 @@ class MyBarLifeComponent extends InterfaceComponent {
     double xBar = 29;
     double yBar = 27;
 
-    double currentBarStamina = (stamina * widthBar) / maxStamina;
+    double currentBarStamina =
+        maxStamina > 0 ? (stamina * widthBar) / maxStamina : 0;
     canvas.drawLine(
       Offset(xBar, yBar),
       Offset(xBar + currentBarStamina, yBar),
@@ -80,6 +94,71 @@ class MyBarLifeComponent extends InterfaceComponent {
         ..strokeWidth = strokeWidth
         ..style = PaintingStyle.fill,
     );
+  }
+
+  void _drawExp(Canvas canvas) {
+    double xBar = 29;
+    double yBar = 36;
+    double strokeExp = 3;
+
+    canvas.drawLine(
+      Offset(xBar, yBar),
+      Offset(xBar + widthBar, yBar),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.6)
+        ..strokeWidth = strokeExp
+        ..style = PaintingStyle.fill,
+    );
+
+    double currentBarExp = (expRatio * widthBar).clamp(0.0, widthBar);
+    if (currentBarExp > 0) {
+      canvas.drawLine(
+        Offset(xBar, yBar),
+        Offset(xBar + currentBarExp, yBar),
+        Paint()
+          ..color = Colors.deepPurpleAccent
+          ..strokeWidth = strokeExp
+          ..style = PaintingStyle.fill,
+      );
+    }
+  }
+
+  void _drawLevelBadge(Canvas canvas) {
+    final textSpan = TextSpan(
+      text: 'Lv.$playerLevel',
+      style: const TextStyle(
+        color: Colors.amberAccent,
+        fontSize: 10,
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Normal',
+      ),
+    );
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+
+    final badgeRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(125, 8, textPainter.width + 12, textPainter.height + 6),
+      const Radius.circular(4),
+    );
+
+    canvas.drawRRect(
+      badgeRect,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.75)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawRRect(
+      badgeRect,
+      Paint()
+        ..color = Colors.amberAccent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+
+    textPainter.paint(canvas, const Offset(131, 11));
   }
 
   Color _getColorLife(double currentBarLife) {

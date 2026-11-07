@@ -16,13 +16,15 @@ class KnightInterface extends GameInterface {
   void render(Canvas canvas) {
     try {
       _drawKey(canvas);
-    } catch (e) {}
+    } catch (_) {
+      // ignore
+    }
     super.render(canvas);
   }
 
   void _drawKey(Canvas c) {
     if (gameRef.player != null && (gameRef.player as Knight).containKey) {
-      keySprite.renderRect(c, Rect.fromLTWH(150, 20, 35, 30));
+      keySprite.renderRect(c, Rect.fromLTWH(190, 20, 35, 30));
     }
   }
 }

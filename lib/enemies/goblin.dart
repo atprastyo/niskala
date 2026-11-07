@@ -1,5 +1,7 @@
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
+import 'package:niskala/model/progression.dart';
+import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
 import 'package:niskala/util/functions.dart';
 import 'package:niskala/util/game_sprite_sheet.dart';
@@ -16,17 +18,31 @@ import 'package:flutter/material.dart';
 // - onDie / onReceiveDamage → life.onDieListener / life.onReceiveDamageListener
 class Goblin extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
+  final EnemyProgression progression;
+  int get level => progression.level;
   double attackDamage = 25;
   final IntervalTick _attackInterval = IntervalTick(800);
 
-  Goblin(this.initPosition)
-      : super(
+  Goblin(this.initPosition, {int level = 1})
+      : progression = EnemyProgression(tier: EnemyTier.goblin, level: level),
+        super(
           animation: EnemySpriteSheet.goblinAnimations(),
           position: initPosition,
           size: Vector2.all(tileSize * 0.8),
           speed: tileSize * 1.5,
-          life: 120,
-        );
+          life: EnemyProgression(tier: EnemyTier.goblin, level: level).maxLife,
+        ) {
+    attackDamage = progression.attackDamage;
+    lifeBar.setup(
+      showLifeText: true,
+      textStyle: TextStyle(
+        fontSize: valueByTileSize(3),
+        color: Colors.white,
+        fontFamily: 'Normal',
+      ),
+      barLifetextBuilder: (life, maxLife) => 'Lv.$level ${life.toInt()}',
+    );
+  }
 
   @override
   void onMount() {
@@ -67,6 +83,9 @@ class Goblin extends SimpleEnemy with WithCollision, WithLifeBar {
         loop: false,
       ),
     );
+    if (gameRef.player is Knight) {
+      (gameRef.player as Knight).gainExp(progression.expBounty);
+    }
     removeFromParent();
   }
 

@@ -1,5 +1,7 @@
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
+import 'package:niskala/model/progression.dart';
+import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
 import 'package:niskala/util/functions.dart';
 import 'package:niskala/util/game_sprite_sheet.dart';
@@ -10,19 +12,33 @@ import 'package:flutter/material.dart';
 // withOpacity → withValues; attack API via attack.melee() / attack.range()
 class MiniBoss extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
+  final EnemyProgression progression;
+  int get level => progression.level;
   double attackDamage = 50;
   bool _seePlayerClose = false;
   final IntervalTick _meleeInterval = IntervalTick(300);
   final IntervalTick _rangeInterval = IntervalTick(1000);
 
-  MiniBoss(this.initPosition)
-      : super(
+  MiniBoss(this.initPosition, {int level = 1})
+      : progression = EnemyProgression(tier: EnemyTier.miniBoss, level: level),
+        super(
           animation: EnemySpriteSheet.miniBossAnimations(),
           position: initPosition,
           size: Vector2(tileSize * 0.68, tileSize * 0.93),
           speed: tileSize * 1.5,
-          life: 150,
-        );
+          life: EnemyProgression(tier: EnemyTier.miniBoss, level: level).maxLife,
+        ) {
+    attackDamage = progression.attackDamage;
+    lifeBar.setup(
+      showLifeText: true,
+      textStyle: TextStyle(
+        fontSize: valueByTileSize(3),
+        color: Colors.white,
+        fontFamily: 'Normal',
+      ),
+      barLifetextBuilder: (life, maxLife) => 'Lv.$level ${life.toInt()}',
+    );
+  }
 
   @override
   void onMount() {
@@ -79,6 +95,9 @@ class MiniBoss extends SimpleEnemy with WithCollision, WithLifeBar {
         loop: false,
       ),
     );
+    if (gameRef.player is Knight) {
+      (gameRef.player as Knight).gainExp(progression.expBounty);
+    }
     removeFromParent();
   }
 

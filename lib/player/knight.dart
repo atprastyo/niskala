@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
+import 'package:niskala/model/progression.dart';
 import 'package:niskala/util/functions.dart';
 import 'package:niskala/util/game_sprite_sheet.dart';
 import 'package:niskala/util/player_sprite_sheet.dart';
@@ -21,6 +22,7 @@ import 'package:flutter/services.dart';
 // - withOpacity → withValues
 class Knight extends SimplePlayer with WithLighting, WithCollision {
   static const double spriteScale = 1.5;
+  final PlayerProgression progression;
   double attackDamage = 25;
   double stamina = 100;
   double _staminaElapsed = 0;
@@ -97,8 +99,12 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   bool containKey = false;
   bool showObserveEnemy = false;
 
-  Knight(Vector2 position, {this.keyboardMovement = false})
-      : super(
+  Knight(
+    Vector2 position, {
+    this.keyboardMovement = false,
+    PlayerProgression? progression,
+  })  : progression = progression ?? PlayerProgression(),
+        super(
           animation: PlayerSpriteSheet.playerAnimations(),
           size: Vector2.all(tileSize * spriteScale),
           // Grow upward around the original tile-sized player's foot anchor.
@@ -107,9 +113,14 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
                 tileSize * (spriteScale - 1) / 2,
                 tileSize * (spriteScale - 1),
               ),
-          life: 200,
+          life: (progression ?? PlayerProgression()).maxLife,
           speed: tileSize * (keyboardMovement ? 1.4 : 2.5),
         ) {
+    if (this.progression.level > 1) {
+      life.initial(this.progression.maxLife);
+    }
+    stamina = this.progression.maxStamina;
+    attackDamage = this.progression.attack1Damage;
     lighting.setup(
       LightingConfig(
         radius: tileSize * 1.5,
@@ -220,6 +231,7 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
     _comboDebounceTime = 0.0;
     _attackPending = true;
     _attackDirection = direction;
+    attackDamage = progression.attack1Damage;
     decrementStamina(15);
     velocity = Vector2.zero();
     setupMovementByJoystick(intensityEnabled: true, enabled: false);
@@ -258,6 +270,7 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
     _comboDebounceTime = 0.0;
     _attackPending = true;
     _attackDirection = direction;
+    attackDamage = progression.attack2Damage;
     decrementStamina(15);
     velocity = Vector2.zero();
     setupMovementByJoystick(intensityEnabled: true, enabled: false);
@@ -304,7 +317,7 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
       animation: GameSpriteSheet.fireBallAttackRight(),
       animationDestroy: GameSpriteSheet.fireBallExplosion(),
       size: Vector2.all(fireballSize),
-      damage: 10,
+      damage: progression.skillDamage,
       speed: speed * 2.5,
       marginFromOrigin: 20,
       onDestroy: () {
@@ -320,6 +333,51 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
         color: Colors.deepOrangeAccent.withValues(alpha: 0.4),
       ),
     );
+  }
+
+  /// Grants EXP to the player and handles level progression.
+  int gainExp(int amount) {
+    if (isDead) return 0;
+    if (hasGameRef) {
+      gameRef.add(
+        TextDamageComponent(
+          '+$amount EXP',
+          Vector2(position.x + size.x / 4, position.y),
+          config: TextStyle(
+            fontSize: valueByTileSize(5),
+            color: Colors.lightGreenAccent,
+            fontFamily: 'Normal',
+            fontWeight: FontWeight.bold,
+          ),
+          onlyUp: true,
+        ),
+      );
+    }
+    final levelsGained = progression.gainExp(
+      amount,
+      onLevelUp: (newLevel) {
+        life.initial(progression.maxLife);
+        stamina = progression.maxStamina;
+        attackDamage = progression.attack1Damage;
+        if (hasGameRef) {
+          gameRef.add(
+            TextDamageComponent(
+              'LEVEL UP! Lv.$newLevel',
+              Vector2(position.x, position.y - valueByTileSize(10)),
+              config: TextStyle(
+                fontSize: valueByTileSize(7),
+                color: Colors.amberAccent,
+                fontFamily: 'Normal',
+                fontWeight: FontWeight.bold,
+              ),
+              onlyUp: true,
+            ),
+          );
+          _showEmote();
+        }
+      },
+    );
+    return levelsGained;
   }
 
   @override
@@ -354,10 +412,11 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
 
   void _verifyStamina(double dt) {
     _staminaElapsed += dt;
-    final ticks = (_staminaElapsed / 0.15).floor();
+    final interval = progression.staminaRegenInterval;
+    final ticks = (_staminaElapsed / interval).floor();
     if (ticks == 0) return;
-    _staminaElapsed -= ticks * 0.15;
-    stamina = (stamina + ticks * 2).clamp(0, 100).toDouble();
+    _staminaElapsed -= ticks * interval;
+    stamina = (stamina + ticks * 2).clamp(0, progression.maxStamina).toDouble();
   }
 
   void decrementStamina(int i) {

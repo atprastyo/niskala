@@ -4,6 +4,8 @@ import 'package:bonfire/bonfire.dart';
 import 'package:niskala/enemies/imp.dart';
 import 'package:niskala/enemies/mini_boss.dart';
 import 'package:niskala/main.dart';
+import 'package:niskala/model/progression.dart';
+import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/custom_sprite_animation_widget.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
 import 'package:niskala/util/functions.dart';
@@ -19,6 +21,8 @@ import 'package:flutter/services.dart';
 // life.value instead of life, util.directionThePlayerIsIn(), attack.melee()
 class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
+  final EnemyProgression progression;
+  int get level => progression.level;
   double attackDamage = 40;
 
   bool addChild = false;
@@ -28,14 +32,26 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
   final IntervalTick _attackInterval = IntervalTick(1500);
   final IntervalTick _addChildInterval = IntervalTick(2000);
 
-  Boss(this.initPosition)
-      : super(
+  Boss(this.initPosition, {int level = 1})
+      : progression = EnemyProgression(tier: EnemyTier.boss, level: level),
+        super(
           animation: EnemySpriteSheet.bossAnimations(),
           position: initPosition,
           size: Vector2(tileSize * 1.5, tileSize * 1.7),
           speed: tileSize * 1.5,
-          life: 200,
-        );
+          life: EnemyProgression(tier: EnemyTier.boss, level: level).maxLife,
+        ) {
+    attackDamage = progression.attackDamage;
+    lifeBar.setup(
+      showLifeText: true,
+      textStyle: TextStyle(
+        fontSize: valueByTileSize(3),
+        color: Colors.white,
+        fontFamily: 'Normal',
+      ),
+      barLifetextBuilder: (life, maxLife) => 'BOSS Lv.$level ${life.toInt()}',
+    );
+  }
 
   @override
   void onMount() {
@@ -77,13 +93,14 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
       );
     }
 
-    if (life.value < 150 && childrenEnemy.length == 0) {
+    final maxL = life.max;
+    if (life.value < maxL * 0.75 && childrenEnemy.isEmpty) {
       _addChildInMap(dt);
     }
-    if (life.value < 100 && childrenEnemy.length == 1) {
+    if (life.value < maxL * 0.50 && childrenEnemy.length == 1) {
       _addChildInMap(dt);
     }
-    if (life.value < 50 && childrenEnemy.length == 2) {
+    if (life.value < maxL * 0.25 && childrenEnemy.length == 2) {
       _addChildInMap(dt);
     }
 
@@ -108,6 +125,9 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
     );
     for (final e in childrenEnemy) {
       if (!e.isDead) e.life.handleAttack(AttackOriginEnum.WORLD, e.life.value, 0);
+    }
+    if (gameRef.player is Knight) {
+      (gameRef.player as Knight).gainExp(progression.expBounty);
     }
     removeFromParent();
   }
@@ -135,8 +155,8 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
     }
 
     Enemy e = childrenEnemy.length == 2
-        ? MiniBoss(Vector2(positionExplosion.x, positionExplosion.y))
-        : Imp(Vector2(positionExplosion.x, positionExplosion.y));
+        ? MiniBoss(Vector2(positionExplosion.x, positionExplosion.y), level: level)
+        : Imp(Vector2(positionExplosion.x, positionExplosion.y), level: level);
 
     gameRef.add(
       AnimatedGameObject(
@@ -177,7 +197,7 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
     double yPosition = 0;
     double barWidth = (width - 10) / 3;
 
-    if (childrenEnemy.length < 1) {
+    if (childrenEnemy.isEmpty) {
       canvas.drawLine(
         Offset(0, yPosition),
         Offset(barWidth, yPosition),

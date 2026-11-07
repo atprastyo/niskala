@@ -1,5 +1,7 @@
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
+import 'package:niskala/model/progression.dart';
+import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
 import 'package:niskala/util/functions.dart';
 import 'package:niskala/util/game_sprite_sheet.dart';
@@ -9,17 +11,31 @@ import 'package:flutter/material.dart';
 // Bonfire v4: BlockMovementCollision → WithCollision, UseLifeBar → WithLifeBar
 class Imp extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
+  final EnemyProgression progression;
+  int get level => progression.level;
   double attackDamage = 10;
   final IntervalTick _attackInterval = IntervalTick(300);
 
-  Imp(this.initPosition)
-      : super(
+  Imp(this.initPosition, {int level = 1})
+      : progression = EnemyProgression(tier: EnemyTier.imp, level: level),
+        super(
           animation: EnemySpriteSheet.impAnimations(),
           position: initPosition,
           size: Vector2.all(tileSize * 0.8),
           speed: tileSize * 2,
-          life: 80,
-        );
+          life: EnemyProgression(tier: EnemyTier.imp, level: level).maxLife,
+        ) {
+    attackDamage = progression.attackDamage;
+    lifeBar.setup(
+      showLifeText: true,
+      textStyle: TextStyle(
+        fontSize: valueByTileSize(3),
+        color: Colors.white,
+        fontFamily: 'Normal',
+      ),
+      barLifetextBuilder: (life, maxLife) => 'Lv.$level ${life.toInt()}',
+    );
+  }
 
   @override
   void onMount() {
@@ -76,6 +92,9 @@ class Imp extends SimpleEnemy with WithCollision, WithLifeBar {
         loop: false,
       ),
     );
+    if (gameRef.player is Knight) {
+      (gameRef.player as Knight).gainExp(progression.expBounty);
+    }
     removeFromParent();
   }
 
