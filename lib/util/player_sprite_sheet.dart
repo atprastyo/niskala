@@ -37,11 +37,15 @@ class PlayerSpriteSheet {
 
   static Future<SpriteAnimation> idleRight() => _heroAnimation('idle');
 
+  static Future<SpriteAnimation> attack1(String facing) =>
+      _heroAnimation('attack_1', facing: facing, stepTime: 0.065);
+
+  static Future<SpriteAnimation> attack2(String facing) =>
+      _heroAnimation('attack_2', facing: facing, stepTime: 0.065);
+
   static Future<SpriteAnimation> _combo(String facing) async {
-    final first =
-        await _heroAnimation('attack_1', facing: facing, stepTime: 0.065);
-    final second =
-        await _heroAnimation('attack_2', facing: facing, stepTime: 0.065);
+    final first = await attack1(facing);
+    final second = await attack2(facing);
     return SpriteAnimation([...first.frames, ...second.frames], loop: false);
   }
 
@@ -60,6 +64,8 @@ class PlayerSpriteSheet {
             // Arka has no separate walk sheet; use a slower run cadence.
             'walk_$facing':
                 _heroAnimation('run', facing: facing, stepTime: 0.12),
+            'attack1_$facing': attack1(facing),
+            'attack2_$facing': attack2(facing),
             'combo_$facing': _combo(facing),
           },
         },

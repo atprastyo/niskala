@@ -110,6 +110,30 @@ void main() {
     await advance(5);
     expect(
         gameRef.world.children.whereType<FlyingAttackGameObject>(), isNotEmpty);
+
+    // Verify Combo Debounce: Single press only plays attack_1
+    knight.stamina = 100;
+    knight.actionAttack();
+    expect(knight.isAttacking, isTrue);
+    expect(knight.stamina, 85);
+    await advance(20);
+    expect(knight.isAttacking, isFalse);
+
+    // Wait for the combo debounce window (0.35s) to expire so combo resets to attack 1
+    await advance(15);
+
+    // Verify Combo Debounce: Double press chains attack_1 into attack_2
+    knight.stamina = 100;
+    knight.actionAttack();
+    expect(knight.stamina, 85);
+    knight.actionAttack();
+    expect(knight.stamina, 85); // queued, not deducted yet
+    await advance(20); // attack_1 finishes, attack_2 triggers
+    expect(knight.isAttacking, isTrue);
+    expect(knight.stamina, lessThan(100)); // attack_2 spent stamina (partially regenerated)
+    await advance(25); // attack_2 finishes
+    expect(knight.isAttacking, isFalse);
+
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });

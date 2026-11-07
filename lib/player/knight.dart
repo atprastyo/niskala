@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/util/functions.dart';
@@ -25,6 +27,10 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   bool _isAttacking = false;
   bool _attackPending = false;
   Direction _attackDirection = Direction.right;
+  int _comboStep = 1;
+  bool _comboQueued = false;
+  double _comboDebounceTime = 0.0;
+  static const double comboDebounceWindow = 0.35;
   final bool keyboardMovement;
   final Set<LogicalKeyboardKey> _sprintKeys = {};
 
@@ -172,6 +178,10 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   }
 
   void _onDie() {
+    _isAttacking = false;
+    _comboQueued = false;
+    _comboStep = 1;
+    _comboDebounceTime = 0.0;
     removeFromParent();
     gameRef.add(
       GameDecoration.withSprite(
@@ -183,24 +193,85 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   }
 
   void actionAttack() {
-    if (stamina < 15 || _isAttacking || isDead) return;
+    if (isDead) return;
 
+    // If already attacking: queue the second attack if we're currently on Attack 1.
+    if (_isAttacking) {
+      if (_comboStep == 1 && !_comboQueued) {
+        _comboQueued = true;
+      }
+      return;
+    }
+
+    if (stamina < 15) return;
+
+    // If pressed within debounce window after Attack 1, continue combo into Attack 2.
+    if (_comboStep == 2 && _comboDebounceTime > 0) {
+      _executeAttack2();
+    } else {
+      _executeAttack1();
+    }
+  }
+
+  void _executeAttack1() {
     _isAttacking = true;
+    _comboStep = 1;
+    _comboQueued = false;
+    _comboDebounceTime = 0.0;
     _attackPending = true;
     _attackDirection = direction;
     decrementStamina(15);
     velocity = Vector2.zero();
     setupMovementByJoystick(intensityEnabled: true, enabled: false);
     animation?.playOnceOther(
-      'combo_${facingFor(_attackDirection)}',
+      'attack1_${facingFor(_attackDirection)}',
       flipX: false,
       runToTheEnd: true,
-      // Expand the 48px movement crop back to the full 96 x 80 attack cell.
       size: Vector2(size.x * 2, size.y * 80 / 48),
       offset: Vector2(-size.x / 2, -size.y / 3),
       onFinish: () {
-        _applyComboDamage();
+        _applyAttackDamage();
+        if (_comboQueued && stamina >= 15 && !isDead && !isRemoving) {
+          _comboQueued = false;
+          scheduleMicrotask(() {
+            if (!isDead && !isRemoving) {
+              _executeAttack2();
+            }
+          });
+        } else {
+          _isAttacking = false;
+          _comboStep = 2;
+          _comboDebounceTime = comboDebounceWindow;
+          if (!isDead && !isRemoving) {
+            setupMovementByJoystick(intensityEnabled: true);
+            directionAnimation.playIdleAnimation();
+          }
+        }
+      },
+    );
+  }
+
+  void _executeAttack2() {
+    _isAttacking = true;
+    _comboStep = 2;
+    _comboQueued = false;
+    _comboDebounceTime = 0.0;
+    _attackPending = true;
+    _attackDirection = direction;
+    decrementStamina(15);
+    velocity = Vector2.zero();
+    setupMovementByJoystick(intensityEnabled: true, enabled: false);
+    animation?.playOnceOther(
+      'attack2_${facingFor(_attackDirection)}',
+      flipX: false,
+      runToTheEnd: true,
+      size: Vector2(size.x * 2, size.y * 80 / 48),
+      offset: Vector2(-size.x / 2, -size.y / 3),
+      onFinish: () {
+        _applyAttackDamage();
         _isAttacking = false;
+        _comboStep = 1;
+        _comboDebounceTime = 0.0;
         if (!isDead && !isRemoving) {
           setupMovementByJoystick(intensityEnabled: true);
           directionAnimation.playIdleAnimation();
@@ -209,11 +280,10 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
     );
   }
 
-  void _applyComboDamage() {
+  void _applyAttackDamage() {
     if (!_attackPending || isDead || isRemoving) return;
     _attackPending = false;
     Sounds.attackPlayerMelee();
-    // The combo sheet already contains the slash; only spawn its damage area.
     attack.melee(
       damage: attackDamage,
       size: Vector2.all(tileSize),
@@ -256,20 +326,29 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   void update(double dt) {
     if (isDead) return;
     _verifyStamina(dt);
-    vision.seeEnemy(
-      radiusVision: tileSize * 6,
-      notObserved: () {
-        showObserveEnemy = false;
-      },
-      observed: (enemies) {
-        if (showObserveEnemy) return;
-        showObserveEnemy = true;
-        _showEmote();
-      },
-    );
+    if (_comboDebounceTime > 0) {
+      _comboDebounceTime -= dt;
+      if (_comboDebounceTime <= 0) {
+        _comboStep = 1;
+        _comboDebounceTime = 0.0;
+      }
+    }
+    if (hasGameRef) {
+      vision.seeEnemy(
+        radiusVision: tileSize * 6,
+        notObserved: () {
+          showObserveEnemy = false;
+        },
+        observed: (enemies) {
+          if (showObserveEnemy) return;
+          showObserveEnemy = true;
+          _showEmote();
+        },
+      );
+    }
     super.update(dt);
     if (_isAttacking && (animation?.fastAnimationcurrentIndex ?? 0) >= 1) {
-      _applyComboDamage();
+      _applyAttackDamage();
     }
   }
 
