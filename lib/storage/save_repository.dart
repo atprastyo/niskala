@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:niskala/model/game_session.dart';
+import 'package:niskala/model/campaign_state.dart';
 import 'package:niskala/model/progression.dart';
 
 abstract interface class SaveFiles {
@@ -178,6 +179,7 @@ Map<String, Object> _encodeSession(GameSession session) {
     'checkpointMap': session.checkpointMapId,
     'checkpointSpawn': session.checkpointSpawnId,
     'rewardClaims': session.rewardClaims.toList()..sort(),
+    'campaign': session.campaign.toJson(),
   };
   _decodeSession(data);
   return data;
@@ -197,6 +199,9 @@ GameSession _decodeSession(dynamic value) {
     throw const FormatException('Invalid progression');
   }
   final session = GameSession(
+    campaign: data.containsKey('campaign')
+        ? CampaignState.fromJson(data['campaign'] as Map<String, dynamic>)
+        : CampaignState(),
     progression: PlayerProgression(level: level, currentExp: xp),
     rewardClaims: (data['rewardClaims'] as List<dynamic>? ?? const [])
         .cast<String>(),

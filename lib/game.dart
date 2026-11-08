@@ -14,6 +14,7 @@ import 'package:niskala/npc/kid.dart';
 import 'package:niskala/npc/wizard_npc.dart';
 import 'package:niskala/player/knight.dart';
 import 'package:niskala/model/game_session.dart';
+import 'package:niskala/model/map_registry.dart';
 import 'package:niskala/util/sounds.dart';
 import 'package:niskala/widgets/game_controller.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,10 @@ class Game extends StatefulWidget {
 
 class GameState extends State<Game> {
   late final GameSession session = widget.initialSession ?? GameSession();
+  late final MapDestination destination = MapRegistry.development.resolve(
+    session.currentMapId,
+    session.currentSpawnId,
+  );
   @override
   void initState() {
     Sounds.playBackgroundSound();
@@ -93,12 +98,15 @@ class GameState extends State<Game> {
       child: BonfireWidget(
         playerControllers: [joystick],
         player: Knight(
-          Vector2(2 * tileSize, 3 * tileSize),
+          Vector2(
+            destination.spawn.tileX * tileSize,
+            destination.spawn.tileY * tileSize,
+          ),
           session: session,
           keyboardMovement: !Game.useJoystick,
         ),
         map: WorldMapByTiled(
-          WorldMapReader.fromAsset('tiled/map.json'),
+          WorldMapReader.fromAsset(destination.map.asset),
           forceTileSize: Vector2(tileSize, tileSize),
           objectsBuilder: {
             'door': (p) => Door(p.position, p.size),

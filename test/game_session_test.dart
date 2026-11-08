@@ -24,9 +24,12 @@ void main() {
     first.gainExp(20);
     first.life.remove(35);
     first.decrementStamina(15);
+    session.applyCampaignEvent(const InteractionRecorded('talked_to_ratih'));
 
     final replacement = Knight(Vector2(100, 100), session: session);
     expect(replacement.progression, same(first.progression));
+    expect(replacement.session.campaign, same(first.session.campaign));
+    expect(replacement.session.campaign.facts, {'talked_to_ratih'});
     expect(replacement.progression.currentExp, 20);
     expect(replacement.life.value, 165);
     expect(replacement.life.max, 200);

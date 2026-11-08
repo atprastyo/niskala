@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:niskala/model/game_session.dart';
+import 'package:niskala/model/campaign_state.dart';
 import 'package:niskala/model/game_events.dart';
 import 'package:niskala/storage/native_save_files.dart';
 import 'package:niskala/storage/save_repository.dart';
@@ -28,6 +29,33 @@ void main() {
     repository = SaveRepository(files: files, keys: keys);
   });
   tearDown(() => directory.delete(recursive: true));
+
+  test('campaign records survive encrypted saving independently', () async {
+    final session = GameSession();
+    session.campaign.addItem('sword');
+    session.campaign.equip('weapon', 'sword');
+    session.applyCampaignEvent(const RegionDiscovered('hutan_embun'));
+    session.applyCampaignEvent(const QuestCompleted('main_01_village'));
+    session.applyCampaignEvent(
+      const IngredientReceived('boss_01', 'daun_embun'),
+    );
+    session.campaign.setHabitatCooldown('pack_01', 90);
+    session.campaign.setReturnLocation(
+      'dungeon_01',
+      TravelLocation('hutan_embun', 'portal_01'),
+    );
+    final pending = repository.save(session);
+    session.campaign.addItem('sword');
+    await pending;
+    final restored = (await repository.load())!.session.campaign;
+    expect(restored.inventory['sword'], 1);
+    expect(restored.equipment['weapon'], 'sword');
+    expect(restored.discoveredRegions, {'hutan_embun'});
+    expect(restored.completedQuests, {'main_01_village'});
+    expect(restored.ingredients, {'daun_embun'});
+    expect(restored.habitatCooldowns['pack_01'], 90);
+    expect(restored.returnLocations['dungeon_01']!.spawnId, 'portal_01');
+  });
 
   test('existing version-1 saves without reward claims still load', () async {
     final cipher = AesGcm.with256bits();
@@ -60,6 +88,8 @@ void main() {
     );
     final loaded = (await repository.load())!.session;
     expect(loaded.rewardClaims, isEmpty);
+    expect(loaded.campaign.inventory, isEmpty);
+    expect(loaded.campaign.ingredients, isEmpty);
     expect(loaded.progression.currentExp, 20);
     expect(loaded.health, 150);
   });

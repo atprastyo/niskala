@@ -1,9 +1,11 @@
 import 'progression.dart';
 import 'game_events.dart';
+import 'campaign_state.dart';
 
 /// State shared by successive map actors. Contains no mounted components.
 class GameSession {
   final PlayerProgression progression;
+  final CampaignState campaign;
   final Set<String> _rewardClaims;
   Set<String> get rewardClaims => Set.unmodifiable(_rewardClaims);
   late double health;
@@ -15,8 +17,10 @@ class GameSession {
 
   GameSession({
     PlayerProgression? progression,
+    CampaignState? campaign,
     Iterable<String> rewardClaims = const [],
   }) : progression = progression ?? PlayerProgression(),
+       campaign = campaign ?? CampaignState(),
        _rewardClaims = Set.of(rewardClaims) {
     for (final id in _rewardClaims) {
       _validateRewardId(id);
@@ -30,6 +34,16 @@ class GameSession {
       throw const FormatException('Invalid reward identity');
     }
   }
+
+  bool applyCampaignEvent(CampaignEvent event) => switch (event) {
+    RegionDiscovered(:final regionId) => campaign.discoverRegion(regionId),
+    InteractionRecorded(:final interactionId) => campaign.recordFact(
+      interactionId,
+    ),
+    QuestCompleted(:final questId) => campaign.completeQuest(questId),
+    IngredientReceived(:final bossId, :final ingredientId) =>
+      campaign.receiveIngredient(bossId, ingredientId),
+  };
 
   ExperienceGrant applyEnemyDefeat(
     EnemyDefeated event, {

@@ -3,6 +3,8 @@ import 'dart:async' as async;
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/game.dart';
 import 'package:niskala/model/game_session.dart';
+import 'package:niskala/model/map_registry.dart';
+import 'package:niskala/model/campaign_state.dart';
 import 'package:niskala/storage/save_factory.dart';
 import 'package:niskala/storage/save_repository.dart';
 import 'package:niskala/widgets/saved_game.dart';
@@ -44,10 +46,24 @@ class _MenuState extends State<Menu> {
           return;
         }
         session = loaded.session;
-        if (session.currentMapId != 'dev_dungeon' ||
-            session.currentSpawnId != 'start' ||
-            session.health <= 0) {
-          throw const SaveException('Saved location is not supported yet.');
+        if (session.health <= 0) {
+          throw const SaveException('Saved player is defeated.');
+        }
+        final destination = MapRegistry.development.resolveSavedLocation(
+          TravelLocation(session.currentMapId, session.currentSpawnId),
+          TravelLocation(session.checkpointMapId, session.checkpointSpawnId),
+        );
+        if (destination.map.id != session.currentMapId ||
+            destination.spawnId != session.currentSpawnId) {
+          session.currentMapId = destination.map.id;
+          session.currentSpawnId = destination.spawnId;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Saved location unavailable. Returning to a safe entrance.',
+              ),
+            ),
+          );
         }
         if (loaded.recoveredFromBackup) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -92,16 +92,18 @@ Exit condition: the current build has a recorded baseline and the new campaign c
 
 Dependencies: P00.
 
-Initial engineering increment: `GameSession` owns progression, health, stamina, and initial map/checkpoint IDs. `GameState` retains it across actor reconstruction; `Knight` accepts the session and mirrors life changes into it. Reconstruction, healing, level-up, and session isolation have focused tests. This begins P01 while P00's manual/profile checks remain pending; it does not pass either phase gate.
+The P01 data foundation is implemented: `GameSession` owns progression, health, stamina, map/checkpoint IDs, reward claims, and a component-free `CampaignState`. `GameState` retains it across actor reconstruction; `Knight` accepts the session and mirrors life changes into it. Reconstruction, campaign ownership, healing, level-up, save compatibility, and session isolation have focused tests. P00's manual/profile checks remain pending; this does not pass the travel milestone gate.
 
-The session is retained for one `GameState` and can be restored through the encrypted sandbox save flow. Game-over navigation still starts a fresh game; campaign checkpoint recovery, inventory, return destinations, and the remaining campaign events remain future work. Only one live player actor should own a session at a time; transition lifecycle enforcement belongs to P02.
+The session is retained for one `GameState` and can be restored through the encrypted sandbox save flow. Game-over navigation still starts a fresh game; campaign checkpoint recovery and integration of the new records into world interactions remain future work. Only one live player actor should own a session at a time; transition lifecycle enforcement belongs to P02.
+
+Campaign increment — 2026-11-09: inventory quantities, equipment references, quest/interaction facts, discoveries, completed quests, boss-to-ingredient ownership, habitat cooldown records, and named return destinations are now session-owned and encrypted with saves. Typed campaign events update the appropriate records idempotently. These are data boundaries: no quest acceptance logic, inventory UI, equipment stat bonuses, respawn clock, automatic story events, or map transitions are implied. The next implementation step is P02's validated map registry and travel prototype.
 
 Reward increment — 2026-11-09: enemy actors now issue an `EnemyDefeated` value with a unique spawned-life ID. The session owns XP grants and claimed reward IDs; repeated notifications for the same life do not grant XP again, including after actor reconstruction or encrypted save/load. Fresh sandbox map loads construct new lives, consistent with the existing encounter-reset policy. This does not implement persistent enemy populations, boss completion, ingredients, or first-clear rewards.
 
-- [ ] Define a shared session containing progression, health, stamina, inventory/equipment references, current map, checkpoint, and return destinations.
-- [ ] Plan extensible records for quest facts, ingredient ownership, boss completion, habitat cooldowns, discovery, and reward claims; do not put all mutable data inside `Knight` or a widget.
+- [x] Define a shared session containing progression, health, stamina, inventory/equipment references, current map, checkpoint, and return destinations.
+- [x] Plan extensible records for quest facts, ingredient ownership, boss completion, habitat cooldowns, discovery, and reward claims; do not put all mutable data inside `Knight` or a widget. Implemented with validated, versioned campaign records.
 - [x] Reuse `PlayerProgression` when constructing or rebinding Arka on a map; do not reset level or XP during scene creation. Verified by reconstruction tests.
-- [ ] Define typed events or equivalent boundaries for enemy defeat, region discovery, interaction, quest completion, and ingredient receipt.
+- [x] Define typed events or equivalent boundaries for enemy defeat, region discovery, interaction, quest completion, and ingredient receipt. Enemy defeat is wired to actors; campaign event producers belong to later map/quest phases.
 - [x] Define reward ownership so one enemy defeat cannot award XP through both its old death callback and a new encounter controller. All four enemy types route life-specific rewards through the session; future controllers must retain the same life ID and use this boundary.
 - [x] Write focused state tests for character reconstruction and duplicate reward claims. No save-system success should depend on a live rendering component. Includes replay, new lives, rejected rewards, level-up resources, read-only claims, and encrypted restoration.
 
@@ -110,6 +112,10 @@ Exit condition: two fresh map/player component instances can refer to the same a
 ## P02 — Implement map registry and safe transitions
 
 Dependencies: P01.
+
+Registry increment — 2026-11-09: immutable map definitions now identify asset, map kind, dimensions, and named tile-coordinate spawns. The preserved `dev_dungeon/start` entry loads the original asset at its original location through this registry. Invalid/duplicate definitions and out-of-bounds spawns are rejected. Continue resolves a saved location, then its checkpoint, then the registered sandbox fallback, retaining character/campaign state and showing a recovery notice if needed. Definition bounds are not proof of collision-free terrain or successful asset loading.
+
+P02 remains open: only the existing sandbox is registered. The three prototype maps, transition objects, arrival protection, loading/failure rollback, and checkpoint recovery still need implementation.
 
 - [ ] Add map definitions for mainland regions, village interiors, dungeons, and the preserved sandbox. Each definition identifies its asset and valid named spawns.
 - [ ] Create three simple test maps: a village area, a wilderness area, and a dungeon room. Use existing or placeholder art.

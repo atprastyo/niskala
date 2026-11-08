@@ -1,5 +1,30 @@
 import 'dart:math';
 
+sealed class CampaignEvent {
+  const CampaignEvent();
+}
+
+class RegionDiscovered extends CampaignEvent {
+  final String regionId;
+  const RegionDiscovered(this.regionId);
+}
+
+class InteractionRecorded extends CampaignEvent {
+  final String interactionId;
+  const InteractionRecorded(this.interactionId);
+}
+
+class QuestCompleted extends CampaignEvent {
+  final String questId;
+  const QuestCompleted(this.questId);
+}
+
+class IngredientReceived extends CampaignEvent {
+  final String bossId;
+  final String ingredientId;
+  const IngredientReceived(this.bossId, this.ingredientId);
+}
+
 /// One spawned life, not an enemy type or a reusable habitat/group ID.
 class EnemyDefeated {
   final String lifeId;
