@@ -1,6 +1,7 @@
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/progression.dart';
+import 'package:niskala/model/game_events.dart';
 import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
 import 'package:niskala/util/functions.dart';
@@ -12,19 +13,20 @@ import 'package:flutter/material.dart';
 class Imp extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
   final EnemyProgression progression;
+  final String lifeId = EnemyDefeated.newLifeId();
   int get level => progression.level;
   double attackDamage = 10;
   final IntervalTick _attackInterval = IntervalTick(300);
 
   Imp(this.initPosition, {int level = 1})
-      : progression = EnemyProgression(tier: EnemyTier.imp, level: level),
-        super(
-          animation: EnemySpriteSheet.impAnimations(),
-          position: initPosition,
-          size: Vector2.all(tileSize * 0.8),
-          speed: tileSize * 2,
-          life: EnemyProgression(tier: EnemyTier.imp, level: level).maxLife,
-        ) {
+    : progression = EnemyProgression(tier: EnemyTier.imp, level: level),
+      super(
+        animation: EnemySpriteSheet.impAnimations(),
+        position: initPosition,
+        size: Vector2.all(tileSize * 0.8),
+        speed: tileSize * 2,
+        life: EnemyProgression(tier: EnemyTier.imp, level: level).maxLife,
+      ) {
     attackDamage = progression.attackDamage;
     lifeBar.setup(
       showLifeText: true,
@@ -48,14 +50,8 @@ class Imp extends SimpleEnemy with WithCollision, WithLifeBar {
   Future<void> onLoad() {
     add(
       RectangleHitbox(
-        size: Vector2(
-          valueByTileSize(6),
-          valueByTileSize(6),
-        ),
-        position: Vector2(
-          valueByTileSize(3),
-          valueByTileSize(5),
-        ),
+        size: Vector2(valueByTileSize(6), valueByTileSize(6)),
+        position: Vector2(valueByTileSize(3), valueByTileSize(5)),
       ),
     );
     return super.onLoad();
@@ -93,7 +89,9 @@ class Imp extends SimpleEnemy with WithCollision, WithLifeBar {
       ),
     );
     if (gameRef.player is Knight) {
-      (gameRef.player as Knight).gainExp(progression.expBounty);
+      (gameRef.player as Knight).rewardEnemyDefeat(
+        EnemyDefeated(lifeId: lifeId, experience: progression.expBounty),
+      );
     }
     removeFromParent();
   }

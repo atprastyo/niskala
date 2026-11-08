@@ -177,6 +177,7 @@ Map<String, Object> _encodeSession(GameSession session) {
     'spawn': session.currentSpawnId,
     'checkpointMap': session.checkpointMapId,
     'checkpointSpawn': session.checkpointSpawnId,
+    'rewardClaims': session.rewardClaims.toList()..sort(),
   };
   _decodeSession(data);
   return data;
@@ -197,6 +198,8 @@ GameSession _decodeSession(dynamic value) {
   }
   final session = GameSession(
     progression: PlayerProgression(level: level, currentExp: xp),
+    rewardClaims: (data['rewardClaims'] as List<dynamic>? ?? const [])
+        .cast<String>(),
   );
   double resource(String name, double maximum) {
     final result = (data[name] as num).toDouble();

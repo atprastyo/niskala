@@ -4,6 +4,7 @@ import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/progression.dart';
 import 'package:niskala/model/game_session.dart';
+import 'package:niskala/model/game_events.dart';
 import 'package:niskala/util/functions.dart';
 import 'package:niskala/util/game_sprite_sheet.dart';
 import 'package:niskala/util/player_sprite_sheet.dart';
@@ -90,11 +91,11 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   bool get isRunning => velocity.length > tileSize * 1.65;
 
   static String facingFor(Direction facing) => switch (facing) {
-        Direction.up => 'up',
-        Direction.down => 'down',
-        Direction.left || Direction.upLeft || Direction.downLeft => 'left',
-        _ => 'right',
-      };
+    Direction.up => 'up',
+    Direction.down => 'down',
+    Direction.left || Direction.upLeft || Direction.downLeft => 'left',
+    _ => 'right',
+  };
 
   bool _selectLocomotion(DirectionAnimationMethod method) {
     if (_isAttacking) return false;
@@ -133,17 +134,18 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
     required this.keyboardMovement,
     required this.session,
   }) : super(
-          animation: PlayerSpriteSheet.playerAnimations(),
-          size: Vector2.all(tileSize * spriteScale),
-          // Grow upward around the original tile-sized player's foot anchor.
-          position: position -
-              Vector2(
-                tileSize * (spriteScale - 1) / 2,
-                tileSize * (spriteScale - 1),
-              ),
-          life: session.progression.maxLife,
-          speed: tileSize * (keyboardMovement ? 1.4 : 2.5),
-        ) {
+         animation: PlayerSpriteSheet.playerAnimations(),
+         size: Vector2.all(tileSize * spriteScale),
+         // Grow upward around the original tile-sized player's foot anchor.
+         position:
+             position -
+             Vector2(
+               tileSize * (spriteScale - 1) / 2,
+               tileSize * (spriteScale - 1),
+             ),
+         life: session.progression.maxLife,
+         speed: tileSize * (keyboardMovement ? 1.4 : 2.5),
+       ) {
     life.update(session.health.clamp(0, progression.maxLife).toDouble());
     life.onLifeUpdateListener((value) => session.health = value);
     attackDamage = progression.attack1Damage;
@@ -262,7 +264,8 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
     double minDistanceSquared = radius * radius;
     final myCenter = center;
 
-    final pool = candidateEnemies ??
+    final pool =
+        candidateEnemies ??
         (hasGameRef ? gameRef.livingEnemies() : const <Enemy>[]);
     for (final enemy in pool) {
       if (enemy.isRemoving || enemy.isDead) continue;
@@ -424,25 +427,14 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   }
 
   /// Grants EXP to the player and handles level progression.
-  int gainExp(int amount) {
+  int rewardEnemyDefeat(EnemyDefeated event) =>
+      gainExp(event.experience, rewardId: event.rewardId);
+
+  int gainExp(int amount, {String? rewardId}) {
     if (isDead) return 0;
-    if (hasGameRef) {
-      gameRef.add(
-        TextDamageComponent(
-          '+$amount EXP',
-          Vector2(position.x + size.x / 4, position.y),
-          config: TextStyle(
-            fontSize: valueByTileSize(5),
-            color: Colors.lightGreenAccent,
-            fontFamily: 'Normal',
-            fontWeight: FontWeight.bold,
-          ),
-          onlyUp: true,
-        ),
-      );
-    }
-    final levelsGained = progression.gainExp(
+    final grant = session.grantExperience(
       amount,
+      rewardId: rewardId,
       onLevelUp: (newLevel) {
         life.initial(progression.maxLife);
         stamina = progression.maxStamina;
@@ -465,7 +457,23 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
         }
       },
     );
-    return levelsGained;
+    if (!grant.accepted) return 0;
+    if (hasGameRef) {
+      gameRef.add(
+        TextDamageComponent(
+          '+$amount EXP',
+          Vector2(position.x + size.x / 4, position.y),
+          config: TextStyle(
+            fontSize: valueByTileSize(5),
+            color: Colors.lightGreenAccent,
+            fontFamily: 'Normal',
+            fontWeight: FontWeight.bold,
+          ),
+          onlyUp: true,
+        ),
+      );
+    }
+    return grant.levelsGained;
   }
 
   @override

@@ -94,14 +94,16 @@ Dependencies: P00.
 
 Initial engineering increment: `GameSession` owns progression, health, stamina, and initial map/checkpoint IDs. `GameState` retains it across actor reconstruction; `Knight` accepts the session and mirrors life changes into it. Reconstruction, healing, level-up, and session isolation have focused tests. This begins P01 while P00's manual/profile checks remain pending; it does not pass either phase gate.
 
-The session currently lasts for one `GameState`. Game-over navigation still starts a fresh game; persistence, checkpoint recovery, inventory, return destinations, campaign events, and reward claims remain future work. Only one live player actor should own a session at a time; transition lifecycle enforcement belongs to P02.
+The session is retained for one `GameState` and can be restored through the encrypted sandbox save flow. Game-over navigation still starts a fresh game; campaign checkpoint recovery, inventory, return destinations, and the remaining campaign events remain future work. Only one live player actor should own a session at a time; transition lifecycle enforcement belongs to P02.
+
+Reward increment — 2026-11-09: enemy actors now issue an `EnemyDefeated` value with a unique spawned-life ID. The session owns XP grants and claimed reward IDs; repeated notifications for the same life do not grant XP again, including after actor reconstruction or encrypted save/load. Fresh sandbox map loads construct new lives, consistent with the existing encounter-reset policy. This does not implement persistent enemy populations, boss completion, ingredients, or first-clear rewards.
 
 - [ ] Define a shared session containing progression, health, stamina, inventory/equipment references, current map, checkpoint, and return destinations.
 - [ ] Plan extensible records for quest facts, ingredient ownership, boss completion, habitat cooldowns, discovery, and reward claims; do not put all mutable data inside `Knight` or a widget.
-- [ ] Reuse `PlayerProgression` when constructing or rebinding Arka on a map; do not reset level or XP during scene creation.
+- [x] Reuse `PlayerProgression` when constructing or rebinding Arka on a map; do not reset level or XP during scene creation. Verified by reconstruction tests.
 - [ ] Define typed events or equivalent boundaries for enemy defeat, region discovery, interaction, quest completion, and ingredient receipt.
-- [ ] Define reward ownership so one enemy defeat cannot award XP through both its old death callback and a new encounter controller.
-- [ ] Write focused state tests for character reconstruction and duplicate reward claims. No save-system success should depend on a live rendering component.
+- [x] Define reward ownership so one enemy defeat cannot award XP through both its old death callback and a new encounter controller. All four enemy types route life-specific rewards through the session; future controllers must retain the same life ID and use this boundary.
+- [x] Write focused state tests for character reconstruction and duplicate reward claims. No save-system success should depend on a live rendering component. Includes replay, new lives, rejected rewards, level-up resources, read-only claims, and encrypted restoration.
 
 Exit condition: two fresh map/player component instances can refer to the same authoritative character and campaign state without sharing mounted component instances.
 

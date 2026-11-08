@@ -1,6 +1,7 @@
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/progression.dart';
+import 'package:niskala/model/game_events.dart';
 import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
 import 'package:niskala/util/functions.dart';
@@ -19,19 +20,20 @@ import 'package:flutter/material.dart';
 class Goblin extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
   final EnemyProgression progression;
+  final String lifeId = EnemyDefeated.newLifeId();
   int get level => progression.level;
   double attackDamage = 25;
   final IntervalTick _attackInterval = IntervalTick(800);
 
   Goblin(this.initPosition, {int level = 1})
-      : progression = EnemyProgression(tier: EnemyTier.goblin, level: level),
-        super(
-          animation: EnemySpriteSheet.goblinAnimations(),
-          position: initPosition,
-          size: Vector2.all(tileSize * 0.8),
-          speed: tileSize * 1.5,
-          life: EnemyProgression(tier: EnemyTier.goblin, level: level).maxLife,
-        ) {
+    : progression = EnemyProgression(tier: EnemyTier.goblin, level: level),
+      super(
+        animation: EnemySpriteSheet.goblinAnimations(),
+        position: initPosition,
+        size: Vector2.all(tileSize * 0.8),
+        speed: tileSize * 1.5,
+        life: EnemyProgression(tier: EnemyTier.goblin, level: level).maxLife,
+      ) {
     attackDamage = progression.attackDamage;
     lifeBar.setup(
       showLifeText: true,
@@ -53,13 +55,12 @@ class Goblin extends SimpleEnemy with WithCollision, WithLifeBar {
 
   @override
   Future<void> onLoad() {
-    add(RectangleHitbox(
-      size: Vector2(
-        valueByTileSize(7),
-        valueByTileSize(7),
+    add(
+      RectangleHitbox(
+        size: Vector2(valueByTileSize(7), valueByTileSize(7)),
+        position: Vector2(valueByTileSize(3), valueByTileSize(4)),
       ),
-      position: Vector2(valueByTileSize(3), valueByTileSize(4)),
-    ));
+    );
     return super.onLoad();
   }
 
@@ -84,7 +85,9 @@ class Goblin extends SimpleEnemy with WithCollision, WithLifeBar {
       ),
     );
     if (gameRef.player is Knight) {
-      (gameRef.player as Knight).gainExp(progression.expBounty);
+      (gameRef.player as Knight).rewardEnemyDefeat(
+        EnemyDefeated(lifeId: lifeId, experience: progression.expBounty),
+      );
     }
     removeFromParent();
   }

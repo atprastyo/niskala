@@ -1,6 +1,7 @@
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/progression.dart';
+import 'package:niskala/model/game_events.dart';
 import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
 import 'package:niskala/util/functions.dart';
@@ -13,6 +14,7 @@ import 'package:flutter/material.dart';
 class MiniBoss extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
   final EnemyProgression progression;
+  final String lifeId = EnemyDefeated.newLifeId();
   int get level => progression.level;
   double attackDamage = 50;
   bool _seePlayerClose = false;
@@ -20,14 +22,14 @@ class MiniBoss extends SimpleEnemy with WithCollision, WithLifeBar {
   final IntervalTick _rangeInterval = IntervalTick(1000);
 
   MiniBoss(this.initPosition, {int level = 1})
-      : progression = EnemyProgression(tier: EnemyTier.miniBoss, level: level),
-        super(
-          animation: EnemySpriteSheet.miniBossAnimations(),
-          position: initPosition,
-          size: Vector2(tileSize * 0.68, tileSize * 0.93),
-          speed: tileSize * 1.5,
-          life: EnemyProgression(tier: EnemyTier.miniBoss, level: level).maxLife,
-        ) {
+    : progression = EnemyProgression(tier: EnemyTier.miniBoss, level: level),
+      super(
+        animation: EnemySpriteSheet.miniBossAnimations(),
+        position: initPosition,
+        size: Vector2(tileSize * 0.68, tileSize * 0.93),
+        speed: tileSize * 1.5,
+        life: EnemyProgression(tier: EnemyTier.miniBoss, level: level).maxLife,
+      ) {
     attackDamage = progression.attackDamage;
     lifeBar.setup(
       showLifeText: true,
@@ -96,7 +98,9 @@ class MiniBoss extends SimpleEnemy with WithCollision, WithLifeBar {
       ),
     );
     if (gameRef.player is Knight) {
-      (gameRef.player as Knight).gainExp(progression.expBounty);
+      (gameRef.player as Knight).rewardEnemyDefeat(
+        EnemyDefeated(lifeId: lifeId, experience: progression.expBounty),
+      );
     }
     removeFromParent();
   }

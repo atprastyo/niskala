@@ -10,7 +10,9 @@ Web retains New Game without save controls; a conditional factory keeps native f
 
 Each version-1 envelope contains a version, random 12-byte nonce, ciphertext, and authentication tag. AES-256-GCM authenticates the encrypted versioned session payload and the fixed format identifier. Keys are randomly generated and held separately by `flutter_secure_storage` under `niskala_save_key_v1`. No plaintext save or plaintext temporary file is written.
 
-The encrypted payload contains level, XP, current health/stamina, and map/spawn/checkpoint IDs. Unknown versions, invalid resource bounds, invalid IDs, and inconsistent XP are rejected. Location existence must still be checked by the future map registry.
+The encrypted payload contains level, XP, current health/stamina, map/spawn/checkpoint IDs, and claimed reward IDs. Older version-1 payloads without reward claims load with an empty claim set. Unknown versions, invalid resource bounds, invalid IDs, and inconsistent XP are rejected. Location existence must still be checked by the future map registry.
+
+Enemy reward IDs identify one spawned life. A repeated defeat notification for that life cannot award XP again after loading. Current sandbox loading still creates fresh enemy lives and resets encounters. Persistent populations and claim retention/pruning for a large campaign remain future work; claims currently accumulate in the save.
 
 Keep one repository instance per slot. Its queue serializes reads, key creation, and writes; it does not provide cross-process locking. Only one application process should own the slot. Saves capture the state at the time the request is made.
 

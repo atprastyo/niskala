@@ -5,6 +5,7 @@ import 'package:niskala/enemies/imp.dart';
 import 'package:niskala/enemies/mini_boss.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/progression.dart';
+import 'package:niskala/model/game_events.dart';
 import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/custom_sprite_animation_widget.dart';
 import 'package:niskala/util/enemy_sprite_sheet.dart';
@@ -22,6 +23,7 @@ import 'package:flutter/services.dart';
 class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
   final Vector2 initPosition;
   final EnemyProgression progression;
+  final String lifeId = EnemyDefeated.newLifeId();
   int get level => progression.level;
   double attackDamage = 40;
 
@@ -33,14 +35,14 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
   final IntervalTick _addChildInterval = IntervalTick(2000);
 
   Boss(this.initPosition, {int level = 1})
-      : progression = EnemyProgression(tier: EnemyTier.boss, level: level),
-        super(
-          animation: EnemySpriteSheet.bossAnimations(),
-          position: initPosition,
-          size: Vector2(tileSize * 1.5, tileSize * 1.7),
-          speed: tileSize * 1.5,
-          life: EnemyProgression(tier: EnemyTier.boss, level: level).maxLife,
-        ) {
+    : progression = EnemyProgression(tier: EnemyTier.boss, level: level),
+      super(
+        animation: EnemySpriteSheet.bossAnimations(),
+        position: initPosition,
+        size: Vector2(tileSize * 1.5, tileSize * 1.7),
+        speed: tileSize * 1.5,
+        life: EnemyProgression(tier: EnemyTier.boss, level: level).maxLife,
+      ) {
     attackDamage = progression.attackDamage;
     lifeBar.setup(
       showLifeText: true,
@@ -124,10 +126,14 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
       ),
     );
     for (final e in childrenEnemy) {
-      if (!e.isDead) e.life.handleAttack(AttackOriginEnum.WORLD, e.life.value, 0);
+      if (!e.isDead) {
+        e.life.handleAttack(AttackOriginEnum.WORLD, e.life.value, 0);
+      }
     }
     if (gameRef.player is Knight) {
-      (gameRef.player as Knight).gainExp(progression.expBounty);
+      (gameRef.player as Knight).rewardEnemyDefeat(
+        EnemyDefeated(lifeId: lifeId, experience: progression.expBounty),
+      );
     }
     removeFromParent();
   }
@@ -155,7 +161,10 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
     }
 
     Enemy e = childrenEnemy.length == 2
-        ? MiniBoss(Vector2(positionExplosion.x, positionExplosion.y), level: level)
+        ? MiniBoss(
+            Vector2(positionExplosion.x, positionExplosion.y),
+            level: level,
+          )
         : Imp(Vector2(positionExplosion.x, positionExplosion.y), level: level);
 
     gameRef.add(
@@ -278,9 +287,7 @@ class Boss extends SimpleEnemy with WithCollision, WithLifeBar {
       onChangeTalk: (index) {
         Sounds.interaction();
       },
-      logicalKeyboardKeysToNext: [
-        LogicalKeyboardKey.space,
-      ],
+      logicalKeyboardKeysToNext: [LogicalKeyboardKey.space],
     );
   }
 
