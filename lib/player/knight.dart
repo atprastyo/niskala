@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/progression.dart';
+import 'package:niskala/model/game_session.dart';
 import 'package:niskala/util/functions.dart';
 import 'package:niskala/util/game_sprite_sheet.dart';
 import 'package:niskala/util/player_sprite_sheet.dart';
@@ -22,9 +23,12 @@ import 'package:flutter/services.dart';
 // - withOpacity → withValues
 class Knight extends SimplePlayer with WithLighting, WithCollision {
   static const double spriteScale = 1.5;
-  final PlayerProgression progression;
+  final GameSession session;
+  PlayerProgression get progression => session.progression;
   double attackDamage = 25;
-  double stamina = 100;
+  double get stamina => session.stamina;
+  set stamina(double value) =>
+      session.stamina = value.clamp(0, progression.maxStamina).toDouble();
   double _staminaElapsed = 0;
   bool _isAttacking = false;
   bool _attackPending = false;
@@ -108,12 +112,27 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
   bool containKey = false;
   bool showObserveEnemy = false;
 
-  Knight(
+  factory Knight(
     Vector2 position, {
-    this.keyboardMovement = false,
+    bool keyboardMovement = false,
     PlayerProgression? progression,
-  })  : progression = progression ?? PlayerProgression(),
-        super(
+    GameSession? session,
+  }) {
+    if (session != null && progression != null) {
+      throw ArgumentError('Pass session or progression, not both.');
+    }
+    return Knight._(
+      position,
+      keyboardMovement: keyboardMovement,
+      session: session ?? GameSession(progression: progression),
+    );
+  }
+
+  Knight._(
+    Vector2 position, {
+    required this.keyboardMovement,
+    required this.session,
+  }) : super(
           animation: PlayerSpriteSheet.playerAnimations(),
           size: Vector2.all(tileSize * spriteScale),
           // Grow upward around the original tile-sized player's foot anchor.
@@ -122,14 +141,12 @@ class Knight extends SimplePlayer with WithLighting, WithCollision {
                 tileSize * (spriteScale - 1) / 2,
                 tileSize * (spriteScale - 1),
               ),
-          life: (progression ?? PlayerProgression()).maxLife,
+          life: session.progression.maxLife,
           speed: tileSize * (keyboardMovement ? 1.4 : 2.5),
         ) {
-    if (this.progression.level > 1) {
-      life.initial(this.progression.maxLife);
-    }
-    stamina = this.progression.maxStamina;
-    attackDamage = this.progression.attack1Damage;
+    life.update(session.health.clamp(0, progression.maxLife).toDouble());
+    life.onLifeUpdateListener((value) => session.health = value);
+    attackDamage = progression.attack1Damage;
     lighting.setup(
       LightingConfig(
         radius: tileSize * 1.5,

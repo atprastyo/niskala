@@ -2,6 +2,8 @@
 
 ## Implementation and gameplay
 
+- [Encrypted save foundation](encrypted-saves.md): format, key storage, recovery, native integration, and platform verification still required.
+- [Development baseline](development-baseline.md): automated results, current runtime settings, identifier conventions, and pending device checks.
 - [Step-by-step implementation roadmap](implementation-roadmap.md): dependencies, checklists, playable milestones, and acceptance conditions from map transitions to the full campaign.
 - [Wilderness monster groups](gameplay/wilderness-encounters.md): habitats, mob combat, aggro, grinding, respawn timing, population limits, and persistence.
 

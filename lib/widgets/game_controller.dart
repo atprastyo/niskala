@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 // Bonfire v4: checkInterval removed → use IntervalTick
 class GameController extends GameComponent {
+  final VoidCallback? onRestart;
+  GameController({this.onRestart});
   bool showGameOver = false;
   final IntervalTick _checkInterval = IntervalTick(100);
 
@@ -22,14 +24,16 @@ class GameController extends GameComponent {
   }
 
   void _showDialogGameOver() {
-    Dialogs.showGameOver(
-      context,
-      () {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => Game()),
-          (Route<dynamic> route) => false,
-        );
-      },
-    );
+    Dialogs.showGameOver(context, () {
+      if (onRestart != null) {
+          Navigator.of(context).pop(); // Close the game-over dialog first.
+        onRestart!();
+        return;
+      }
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => Game()),
+        (Route<dynamic> route) => false,
+      );
+    });
   }
 }

@@ -2,6 +2,40 @@
 
 Status: implementation plan. Unchecked tasks are future work; this document does not implement them. Complete phases in dependency order and verify each exit condition before expanding content. Proposed tuning values remain subject to playtesting.
 
+## Starting point — 2026-11-08
+
+Current stage: a playable dungeon foundation with campaign design documents. The current entry point constructs Arka and loads `tiled/map.json`; game over constructs a fresh `Game`. Campaign travel and recovery therefore need explicit shared state before content expansion. These observations are based on `lib/game.dart` and `lib/widgets/game_controller.dart`, rather than a full runtime audit.
+
+The accepted Arka design is saved in [the approved snapshot](art/arka-approved-2026-11-08/README.md). Use it for the initial playable milestones. Additional character-art experiments are outside the first development work package.
+
+**First product target:** start in Kamboja, receive permission, enter the forest, fight a small pack, defeat the first dungeon boss, receive one ingredient, and return home. Closing and reopening the game must preserve progress. This is the first vertical slice and the point to evaluate whether exploration, combat, and the story work together.
+
+### Immediate work package: baseline and shared state
+
+Execute these tasks in order. This is the next work package, not a claim that P00 or P01 is complete.
+
+| Order | Deliverable | Evidence required |
+| --- | --- | --- |
+| 1 | Record the current automated baseline with `flutter analyze` and `flutter test` | Commands, results, and any pre-existing failures recorded separately |
+| 2 | Run the current dungeon on one available development target | Movement, both attacks, XP, level-up, death, and restart checked; device and controls recorded |
+| 3 | Record current scale, camera, loading, and performance observations | A repeatable sandbox scene and measured starting values; unresolved device targets explicitly listed |
+| 4 | Define stable IDs and a minimal shared session | Player progression, resources, current location, and checkpoint have clear ownership; future campaign fields have an extension path |
+| 5 | Bind a newly constructed Arka to that session | Focused tests show reconstruction retains progression and resources; an ordinary enemy defeat still awards XP once |
+| 6 | Review the P00/P01 exit conditions | Only verified tasks checked off; next work package becomes the registry and three-map travel prototype in P02 |
+
+Keep implementation changes small enough to review by deliverable. The baseline record can live in `docs/development-baseline.md` when execution starts; do not fill it with assumed results.
+
+### Scope and scheduling rules
+
+- Treat milestones A–E below as delivery gates. Complete the gate's observable behavior before expanding into its next content batch.
+- Use placeholder village, forest, NPC, and boss art through the first loop where needed. Produce outdoor art after routes and combat spaces survive playtesting.
+- Defer seamless streaming, the complete island, dungeons 2–7, and additional side quests until the first loop is validated. Basic map transitions come first.
+- Keep inventory/equipment to the minimum needed for opening rewards and protected ingredients; settle broader gear design during that prototype.
+- Choose a primary development device in P00. Supported release platforms, final performance budgets, and release requirements remain open until verified.
+- Set calendar estimates after the baseline and travel prototype reveal actual throughput. Team size and available development time are currently unspecified; phase order is the commitment here.
+
+At each milestone review, record the build/revision, automated check results, manual route played, observed problems, and the next priority. A milestone passes when its exit conditions are demonstrated, with blocking failures resolved.
+
 ## Target experience
 
 Arka starts in Kamboja, receives guidance and his mother's permission, explores a forest-and-mountain island, fights respawning monster groups, visits two regional villages, conquers seven dungeons, and returns with seven ingredients to craft the cure.
@@ -45,18 +79,22 @@ The first implementation priority is P00 followed by P01–P02. Do not start by 
 
 Dependencies: none.
 
-- [ ] Run the current test suite and record existing failures separately from new work. Check progression, auto-aim, assets, dungeon geometry, and the game integration test.
+- [x] Run the current test suite and record existing failures separately from new work. Check progression, auto-aim, assets, dungeon geometry, and the game integration test. All 21 tests passed; analysis has 10 pre-existing informational findings. See [development baseline](development-baseline.md).
 - [ ] Smoke-test the existing game on the chosen development target: movement, attacks, XP gain, level-up, game over, and UI.
-- [ ] Confirm current player scale, source tile dimensions, world tile size, camera settings, and controls from the current code; do not overwrite recent changes using old documentation values.
+- [x] Confirm current player scale, source tile dimensions, world tile size, camera settings, and controls from the current code; do not overwrite recent changes using old documentation values. Recorded in the baseline.
 - [ ] Define the first device/performance target and a repeatable profiling scene. Record loading, frame-time, memory, and actor-count baselines without inventing final budgets.
 - [ ] Preserve the current dungeon map as a clearly named development/test map; decide how tests will select it after new-game flow changes.
-- [ ] Record stable identifier conventions for maps, regions, spawns, portals, NPCs, quests, ingredients, habitats, and monster instances.
+- [x] Record stable identifier conventions for maps, regions, spawns, portals, NPCs, quests, ingredients, habitats, and monster instances. Recorded in the baseline; registry implementation remains P02 work.
 
 Exit condition: the current build has a recorded baseline and the new campaign can be developed without silently replacing the sandbox or invalidating its test fixtures.
 
 ## P01 — Separate persistent game state from map actors
 
 Dependencies: P00.
+
+Initial engineering increment: `GameSession` owns progression, health, stamina, and initial map/checkpoint IDs. `GameState` retains it across actor reconstruction; `Knight` accepts the session and mirrors life changes into it. Reconstruction, healing, level-up, and session isolation have focused tests. This begins P01 while P00's manual/profile checks remain pending; it does not pass either phase gate.
+
+The session currently lasts for one `GameState`. Game-over navigation still starts a fresh game; persistence, checkpoint recovery, inventory, return destinations, campaign events, and reward claims remain future work. Only one live player actor should own a session at a time; transition lifecycle enforcement belongs to P02.
 
 - [ ] Define a shared session containing progression, health, stamina, inventory/equipment references, current map, checkpoint, and return destinations.
 - [ ] Plan extensible records for quest facts, ingredient ownership, boss completion, habitat cooldowns, discovery, and reward claims; do not put all mutable data inside `Knight` or a widget.
@@ -85,6 +123,8 @@ Exit condition: village → wilderness → dungeon → wilderness → village wo
 ## P03 — Save, load, and checkpoint foundation
 
 Dependencies: P01–P02.
+
+Storage increment implemented ahead of scene integration: versioned session encryption with AES-256-GCM, a platform secure-storage key adapter, native encrypted files, validated backup recovery, and focused storage tests. Native New Game/Continue and manual Save at entrance now support the existing sandbox, restoring player stats/resources at its entrance while resetting encounters. A game widget test exercises saving without reconstructing the actor. See [encrypted saves](encrypted-saves.md). Campaign checkpoint semantics, world-state persistence, map-registry validation, OS-plugin smoke tests, and automatic save triggers remain pending; P03 is not complete.
 
 - [ ] Choose local persistence and add a versioned save schema, validation, and recovery behavior for missing or invalid saves.
 - [ ] Persist player state, discovered map/spawn IDs, checkpoint, and transition return records.

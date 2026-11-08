@@ -13,6 +13,7 @@ import 'package:niskala/main.dart';
 import 'package:niskala/npc/kid.dart';
 import 'package:niskala/npc/wizard_npc.dart';
 import 'package:niskala/player/knight.dart';
+import 'package:niskala/model/game_session.dart';
 import 'package:niskala/util/sounds.dart';
 import 'package:niskala/widgets/game_controller.dart';
 import 'package:flutter/material.dart';
@@ -20,13 +21,16 @@ import 'package:flutter/services.dart';
 
 class Game extends StatefulWidget {
   static bool useJoystick = true;
-  const Game({super.key});
+  final GameSession? initialSession;
+  final VoidCallback? onRestart;
+  const Game({super.key, this.initialSession, this.onRestart});
 
   @override
   GameState createState() => GameState();
 }
 
 class GameState extends State<Game> {
+  late final GameSession session = widget.initialSession ?? GameSession();
   @override
   void initState() {
     Sounds.playBackgroundSound();
@@ -62,7 +66,7 @@ class GameState extends State<Game> {
           spritePressed: Sprite.load('joystick_atack_range_selected.png'),
           size: 50,
           margin: EdgeInsets.only(bottom: 50, right: 160),
-        )
+        ),
       ],
     );
 
@@ -87,11 +91,10 @@ class GameState extends State<Game> {
     return Material(
       color: Colors.transparent,
       child: BonfireWidget(
-        playerControllers: [
-          joystick,
-        ],
+        playerControllers: [joystick],
         player: Knight(
           Vector2(2 * tileSize, 3 * tileSize),
+          session: session,
           keyboardMovement: !Game.useJoystick,
         ),
         map: WorldMapByTiled(
@@ -105,14 +108,26 @@ class GameState extends State<Game> {
             'spikes': (p) => Spikes(p.position),
             'key': (p) => DoorKey(p.position),
             'kid': (p) => Kid(p.position),
-            'boss': (p) => Boss(p.position, level: (p.others['level'] as num?)?.toInt() ?? 1),
-            'goblin': (p) => Goblin(p.position, level: (p.others['level'] as num?)?.toInt() ?? 1),
-            'imp': (p) => Imp(p.position, level: (p.others['level'] as num?)?.toInt() ?? 1),
-            'mini_boss': (p) => MiniBoss(p.position, level: (p.others['level'] as num?)?.toInt() ?? 1),
+            'boss': (p) => Boss(
+              p.position,
+              level: (p.others['level'] as num?)?.toInt() ?? 1,
+            ),
+            'goblin': (p) => Goblin(
+              p.position,
+              level: (p.others['level'] as num?)?.toInt() ?? 1,
+            ),
+            'imp': (p) => Imp(
+              p.position,
+              level: (p.others['level'] as num?)?.toInt() ?? 1,
+            ),
+            'mini_boss': (p) => MiniBoss(
+              p.position,
+              level: (p.others['level'] as num?)?.toInt() ?? 1,
+            ),
             'torch_empty': (p) => Torch(p.position, empty: true),
           },
         ),
-        components: [GameController()],
+        components: [GameController(onRestart: widget.onRestart)],
         interface: KnightInterface(),
         lightingColorGame: Colors.black.withValues(alpha: 0.6),
         backgroundColor: Colors.grey[900]!,
