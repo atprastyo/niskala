@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:niskala/storage/save_repository.dart';
 import 'package:bonfire/bonfire.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,7 +8,6 @@ import 'package:niskala/game.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/game_session.dart';
 import 'package:niskala/model/map_registry.dart';
-import 'package:niskala/model/map_travel.dart';
 import 'package:niskala/util/localization/my_localizations.dart';
 import 'package:niskala/util/localization/strings_location.dart';
 import 'package:niskala/model/campaign_state.dart';
@@ -27,7 +28,13 @@ void main() {
       ..currentSpawnId = 'start';
     session.progression.gainExp(20);
     session.campaign.recordFact('travel_test');
-    await tester.pumpWidget(MaterialApp(home: SavedGame(session: session)));
+    final files = _AutoSaveFiles();
+    final repository = SaveRepository(files: files, keys: _AutoSaveKeys());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SavedGame(session: session, repository: repository),
+      ),
+    );
     Future<void> advance(int count) async {
       await tester.runAsync(() async {
         for (var i = 0; i < count; i++) {
@@ -55,7 +62,16 @@ void main() {
     expect(player(), isNot(same(initial)));
     expect(player().session, same(session));
     expect(player().life.value, 150);
-    MapTravel(session, MapRegistry.development).setCheckpoint();
+    expect(
+      (await tester.runAsync(() => repository.load()))!.session.currentMapId,
+      'prototype_wilderness',
+    );
+    await tester.tap(find.text('Save at entrance'));
+    await advance(10);
+    expect(
+      (await tester.runAsync(() => repository.load()))!.session.checkpointMapId,
+      'prototype_wilderness',
+    );
     expect(session.progression.currentExp, 20);
     // Remaining idle at arrival must not trigger the reverse portal.
     await advance(40);
@@ -71,18 +87,65 @@ void main() {
       ('forest_gate', 'prototype_wilderness'),
       ('village_gate', 'prototype_village'),
     ]) {
+      if (route.$2 == 'prototype_dungeon') files.failWrites = true;
+      if (route.$2 == 'prototype_wilderness') files.gate = Completer<void>();
       final current = tester.widget<Game>(find.byType(Game));
+      final writesBeforeLoad = files.primaryWrites;
       current.onTravel!(route.$1);
       current.onTravel!(route.$1); // Repeated trigger while loading.
+      tester
+          .widget<ElevatedButton>(
+            find.widgetWithText(ElevatedButton, 'Save at entrance'),
+          )
+          .onPressed
+          ?.call();
+      expect(files.primaryWrites, writesBeforeLoad);
       await advance(60);
       expect(session.currentMapId, route.$2);
       expect(find.byType(Game), findsOneWidget);
       expect(player().session, same(session));
+      if (route.$2 == 'prototype_dungeon') {
+        expect(find.text('Retry save'), findsOneWidget);
+        expect(
+          (await tester.runAsync(
+            () => repository.load(),
+          ))!.session.currentMapId,
+          'prototype_wilderness',
+        );
+        files.failWrites = false;
+        await tester.tap(find.text('Retry save'));
+        await advance(10);
+        expect(find.text('Retry save'), findsNothing);
+        expect(
+          (await tester.runAsync(
+            () => repository.load(),
+          ))!.session.checkpointMapId,
+          'prototype_wilderness',
+        );
+      }
+      if (route.$2 == 'prototype_wilderness') {
+        expect(find.text('Saving…'), findsOneWidget);
+        final menu = tester.widget<ElevatedButton>(
+          find.widgetWithText(ElevatedButton, 'Menu'),
+        );
+        expect(menu.onPressed, isNull);
+        tester.widget<Game>(find.byType(Game)).onTravel!('village_gate');
+        expect(session.currentMapId, 'prototype_wilderness');
+        files.gate!.complete();
+        files.gate = null;
+        await advance(10);
+      }
+      expect(
+        (await tester.runAsync(() => repository.load()))!.session.currentMapId,
+        route.$2,
+      );
     }
+    final writesBeforeInvalidExit = files.primaryWrites;
     final arrived = player();
     tester.widget<Game>(find.byType(Game)).onTravel!('missing_exit');
     await advance(5);
     expect(player(), same(arrived));
+    expect(files.primaryWrites, writesBeforeInvalidExit);
     expect(session.currentMapId, 'prototype_village');
     expect(session.campaign.facts, {'travel_test'});
     player().life.remove(player().life.max);
@@ -93,6 +156,11 @@ void main() {
     await advance(60);
     expect(session.currentMapId, 'prototype_wilderness');
     expect(session.currentSpawnId, 'village_gate');
+    final recoveredSave = (await tester.runAsync(
+      () => repository.load(),
+    ))!.session;
+    expect(recoveredSave.currentMapId, 'prototype_wilderness');
+    expect(recoveredSave.health, recoveredSave.progression.maxLife);
     expect(player().session, same(session));
     expect(player().life.value, player().progression.maxLife);
     expect(session.progression.currentExp, 20);
@@ -136,14 +204,20 @@ void main() {
     session.health = 150;
     await tester.pumpWidget(
       MaterialApp(
-        home: SavedGame(session: session, registry: broken),
+        home: SavedGame(
+          session: session,
+          registry: broken,
+          repository: repository,
+        ),
       ),
     );
     await advance(60);
     final beforeFailure = player();
+    final writesBeforeFailedLoad = files.primaryWrites;
     tester.widget<Game>(find.byType(Game)).onTravel!('bad_asset');
     await advance(10);
     expect(player(), same(beforeFailure));
+    expect(files.primaryWrites, writesBeforeFailedLoad);
     expect(session.currentMapId, 'prototype_village');
     expect(player().life.value, 150);
     expect(
@@ -159,6 +233,7 @@ void main() {
     );
     await advance(15);
     expect(player(), same(beforeFailure));
+    expect(files.primaryWrites, writesBeforeFailedLoad);
     expect(session.health, 0);
     expect(find.text('Retry recovery'), findsOneWidget);
     session.checkpointMapId = 'prototype_village';
@@ -170,4 +245,33 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });
+}
+
+class _AutoSaveKeys implements SaveKeyStore {
+  String? value;
+  @override
+  Future<String?> read() async => value;
+  @override
+  Future<void> write(String key) async => value = key;
+}
+
+class _AutoSaveFiles implements SaveFiles {
+  String? primary, previous;
+  bool failWrites = false;
+  int primaryWrites = 0;
+  Completer<void>? gate;
+  @override
+  Future<String?> read({bool backup = false}) async =>
+      backup ? previous : primary;
+  @override
+  Future<void> write(String encrypted, {bool backup = false}) async {
+    if (failWrites) throw StateError('Storage unavailable');
+    await gate?.future;
+    if (backup) {
+      previous = encrypted;
+    } else {
+      primary = encrypted;
+      primaryWrites++;
+    }
+  }
 }

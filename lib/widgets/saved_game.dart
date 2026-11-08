@@ -91,6 +91,7 @@ class _SavedGameState extends State<SavedGame> {
   }) async {
     if (_changing || _saving || _scenes.single.engine == null) return;
     final old = _scenes.single;
+    var committed = false;
     final health = widget.session.health, stamina = widget.session.stamina;
     old.engine!.pauseEngine();
     setState(() => _changing = true);
@@ -104,6 +105,7 @@ class _SavedGameState extends State<SavedGame> {
           (_) => old.focus.dispose(),
         );
         arrived.engine!.resumeEngine();
+        committed = true;
       } else {
         old.engine!.resumeEngine();
       }
@@ -135,9 +137,32 @@ class _SavedGameState extends State<SavedGame> {
         });
       }
     }
+    // Persistence failure must never enter the scene-loading rollback path.
+    if (committed && mounted) await _autoSave();
   }
 
   bool _saving = false;
+  bool _autoSaveFailed = false;
+
+  Future<void> _autoSave() async {
+    if (_saving || _changing || widget.repository == null) return;
+    if (widget.session.health <= 0) {
+      _message('Recover at a checkpoint before saving.');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.repository!.save(widget.session);
+      if (mounted) setState(() => _autoSaveFailed = false);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _autoSaveFailed = true);
+        _message('Automatic save failed. Use Retry save to try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -159,6 +184,7 @@ class _SavedGameState extends State<SavedGame> {
     try {
       _travel.setCheckpoint();
       await widget.repository!.save(widget.session);
+      if (mounted) setState(() => _autoSaveFailed = false);
       if (mounted) _message('Saved. Continue returns to this area’s entrance.');
     } catch (_) {
       widget.session.checkpointMapId = oldCheckpointMap;
@@ -200,6 +226,11 @@ class _SavedGameState extends State<SavedGame> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (_autoSaveFailed)
+                  ElevatedButton(
+                    onPressed: _saving || _changing ? null : _autoSave,
+                    child: const Text('Retry save'),
+                  ),
                 if (widget.session.health <= 0)
                   ElevatedButton(
                     onPressed: _changing || _saving ? null : _recover,

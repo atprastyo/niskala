@@ -193,6 +193,11 @@ class _MenuState extends State<Menu> {
                 'Continue restores stats at the area entrance; encounters restart.',
                 textAlign: TextAlign.center,
               ),
+              if (!kIsWeb)
+                const Text(
+                  'A new adventure replaces saved progress when you save or travel.',
+                  textAlign: TextAlign.center,
+                ),
               DefectorRadio<bool>(
                 value: false,
                 label: 'Keyboard',
