@@ -60,7 +60,7 @@ void main() {
     await tester.tap(find.text('Save at entrance'));
     await advance(10);
     expect(
-      find.text('Saved. Continue returns to the dungeon entrance.'),
+      find.text('Saved. Continue returns to this area’s entrance.'),
       findsOneWidget,
     );
     expect(gameRef.player, same(knight));

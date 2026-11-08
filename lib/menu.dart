@@ -28,7 +28,10 @@ class _MenuState extends State<Menu> {
   Future<SaveRepository>? _repository;
   bool _opening = false;
 
-  Future<void> _openGame({required bool continuing}) async {
+  Future<void> _openGame({
+    required bool continuing,
+    bool prototype = false,
+  }) async {
     if (_opening) return;
     setState(() => _opening = true);
     try {
@@ -36,6 +39,10 @@ class _MenuState extends State<Menu> {
           ? null
           : await (_repository ??= createNativeSaveRepository());
       var session = GameSession();
+      if (prototype) {
+        session.currentMapId = session.checkpointMapId = 'prototype_village';
+        session.currentSpawnId = session.checkpointSpawnId = 'start';
+      }
       if (continuing) {
         final loaded = await repository!.load();
         if (!mounted) return;
@@ -169,6 +176,12 @@ class _MenuState extends State<Menu> {
                 ),
               ),
               SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _opening
+                    ? null
+                    : () => _openGame(continuing: false, prototype: true),
+                child: const Text('Travel prototype'),
+              ),
               if (!kIsWeb)
                 ElevatedButton(
                   onPressed: _opening
@@ -177,7 +190,7 @@ class _MenuState extends State<Menu> {
                   child: Text(_opening ? 'Opening…' : 'Continue'),
                 ),
               const Text(
-                'Continue restores stats at the entrance; encounters restart.',
+                'Continue restores stats at the area entrance; encounters restart.',
                 textAlign: TextAlign.center,
               ),
               DefectorRadio<bool>(

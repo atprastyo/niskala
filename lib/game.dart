@@ -15,6 +15,7 @@ import 'package:niskala/npc/wizard_npc.dart';
 import 'package:niskala/player/knight.dart';
 import 'package:niskala/model/game_session.dart';
 import 'package:niskala/model/map_registry.dart';
+import 'package:niskala/decoration/map_portal.dart';
 import 'package:niskala/util/sounds.dart';
 import 'package:niskala/widgets/game_controller.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,19 @@ class Game extends StatefulWidget {
   static bool useJoystick = true;
   final GameSession? initialSession;
   final VoidCallback? onRestart;
-  const Game({super.key, this.initialSession, this.onRestart});
+  final MapDestination? destination;
+  final ValueChanged<BonfireGameInterface>? onReady;
+  final ValueChanged<String>? onTravel;
+  final FocusNode? focusNode;
+  const Game({
+    super.key,
+    this.initialSession,
+    this.onRestart,
+    this.destination,
+    this.onReady,
+    this.onTravel,
+    this.focusNode,
+  });
 
   @override
   GameState createState() => GameState();
@@ -32,10 +45,12 @@ class Game extends StatefulWidget {
 
 class GameState extends State<Game> {
   late final GameSession session = widget.initialSession ?? GameSession();
-  late final MapDestination destination = MapRegistry.development.resolve(
-    session.currentMapId,
-    session.currentSpawnId,
-  );
+  late final MapDestination destination =
+      widget.destination ??
+      MapRegistry.development.resolve(
+        session.currentMapId,
+        session.currentSpawnId,
+      );
   @override
   void initState() {
     Sounds.playBackgroundSound();
@@ -96,6 +111,8 @@ class GameState extends State<Game> {
     return Material(
       color: Colors.transparent,
       child: BonfireWidget(
+        focusNode: widget.focusNode,
+        onReady: widget.onReady,
         playerControllers: [joystick],
         player: Knight(
           Vector2(
@@ -135,7 +152,12 @@ class GameState extends State<Game> {
             'torch_empty': (p) => Torch(p.position, empty: true),
           },
         ),
-        components: [GameController(onRestart: widget.onRestart)],
+        components: [
+          GameController(onRestart: widget.onRestart),
+          if (widget.onTravel != null)
+            for (final exit in destination.map.exits)
+              MapPortal(exit, widget.onTravel!),
+        ],
         interface: KnightInterface(),
         lightingColorGame: Colors.black.withValues(alpha: 0.6),
         backgroundColor: Colors.grey[900]!,

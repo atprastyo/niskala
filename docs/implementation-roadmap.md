@@ -115,15 +115,17 @@ Dependencies: P01.
 
 Registry increment — 2026-11-09: immutable map definitions now identify asset, map kind, dimensions, and named tile-coordinate spawns. The preserved `dev_dungeon/start` entry loads the original asset at its original location through this registry. Invalid/duplicate definitions and out-of-bounds spawns are rejected. Continue resolves a saved location, then its checkpoint, then the registered sandbox fallback, retaining character/campaign state and showing a recovery notice if needed. Definition bounds are not proof of collision-free terrain or successful asset loading.
 
-P02 remains open: only the existing sandbox is registered. The three prototype maps, transition objects, arrival protection, loading/failure rollback, and checkpoint recovery still need implementation.
+Travel increment — 2026-11-09: use **Travel prototype** in the main menu to enter three separate village, wilderness, and dungeon blockouts. Cyan labeled portals connect them in both directions. The original sandbox remains the New Game default. Source scenes pause during loading; the destination must report ready before location/return records commit. Duplicate requests and saving are blocked during loading. Portal spacing and a one-second arrival grace prevent immediate return activation. A failed preflight or readiness timeout retains the old scene; existing resources and campaign data are preserved.
 
-- [ ] Add map definitions for mainland regions, village interiors, dungeons, and the preserved sandbox. Each definition identifies its asset and valid named spawns.
-- [ ] Create three simple test maps: a village area, a wilderness area, and a dungeon room. Use existing or placeholder art.
+P02 remains open for game-over checkpoint recovery and future quest/interaction requirements on transitions. Prototype portals are currently unrestricted. Runtime tests cover portal contact, the complete travel loop, keyboard input after travel, duplicate requests, idle arrival, invalid exits, and a missing destination asset. These empty blockouts do not establish combat/spawn-exclusion behavior or target-device performance.
+
+- [x] Add map definitions for mainland regions, village interiors, dungeons, and the preserved sandbox. Each definition identifies its asset and valid named spawns. Prototype definitions exercise all four map kinds; production regions remain later content work.
+- [x] Create three simple test maps: a village area, a wilderness area, and a dungeon room. Use existing or placeholder art.
 - [ ] Add transition objects with destination map, destination spawn, return entrance, and interaction requirements. Support village gates and dungeon portals through the same validated transition boundary.
-- [ ] Add loading/fade behavior, prevent duplicate activation, and disable input while the destination is not ready.
-- [ ] Place Arka at a validated arrival point, clear of collision and hostile spawn exclusions, with arrival protection against immediately retriggering the return trigger.
-- [ ] Restore the correct mainland entrance when leaving a village or dungeon. Keep health, stamina, XP, inventory, and quest facts unchanged except for explicit gameplay rules.
-- [ ] Handle missing maps, invalid spawns, or loading failure by retaining or restoring a valid safe scene and state.
+- [x] Add loading/fade behavior, prevent duplicate activation, and disable input while the destination is not ready. Uses a loading overlay with paused scenes and explicit focus restoration.
+- [x] Place Arka at a validated arrival point, clear of collision and hostile spawn exclusions, with arrival protection against immediately retriggering the return trigger. Verified for the empty prototype maps; later hostile habitats must preserve these arrival zones.
+- [x] Restore the correct mainland entrance when leaving a village or dungeon. Keep health, stamina, XP, inventory, and quest facts unchanged except for explicit gameplay rules. Prototype routes preserve the same session.
+- [x] Handle missing maps, invalid spawns, or loading failure by retaining or restoring a valid safe scene and state. Registry validation, asset preflight, and readiness timeout provide recovery; real-device fault testing remains useful.
 - [ ] Adapt game-over navigation so rebuilding a scene does not accidentally start a new campaign. Recovery destination and restored resources become explicit rules.
 
 Exit condition: village → wilderness → dungeon → wilderness → village works repeatedly, including rapid trigger re-entry and a failed destination load.

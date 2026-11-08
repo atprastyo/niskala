@@ -2,6 +2,7 @@
 
 ## Implementation and gameplay
 
+- [Travel prototype](travel-prototype.md): three connected blockouts, portal route, loading lifecycle, and current limitations.
 - [Encrypted save foundation](encrypted-saves.md): format, key storage, recovery, native integration, and platform verification still required.
 - [Development baseline](development-baseline.md): automated results, current runtime settings, identifier conventions, and pending device checks.
 - [Step-by-step implementation roadmap](implementation-roadmap.md): dependencies, checklists, playable milestones, and acceptance conditions from map transitions to the full campaign.

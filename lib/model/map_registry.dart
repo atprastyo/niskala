@@ -15,6 +15,20 @@ class MapSpawn {
   const MapSpawn(this.tileX, this.tileY);
 }
 
+class MapExit {
+  final String id, label, destinationMapId, destinationSpawnId, returnSpawnId;
+  final double tileX, tileY;
+  const MapExit({
+    required this.id,
+    required this.label,
+    required this.tileX,
+    required this.tileY,
+    required this.destinationMapId,
+    required this.destinationSpawnId,
+    required this.returnSpawnId,
+  });
+}
+
 class MapDefinition {
   final String id;
   final String asset;
@@ -22,6 +36,7 @@ class MapDefinition {
   final int widthInTiles;
   final int heightInTiles;
   final Map<String, MapSpawn> spawns;
+  final List<MapExit> exits;
 
   MapDefinition({
     required this.id,
@@ -30,7 +45,9 @@ class MapDefinition {
     required this.widthInTiles,
     required this.heightInTiles,
     required Map<String, MapSpawn> spawns,
-  }) : spawns = Map.unmodifiable(spawns) {
+    List<MapExit> exits = const [],
+  }) : spawns = Map.unmodifiable(spawns),
+       exits = List.unmodifiable(exits) {
     _identifier(id);
     if (!asset.startsWith('tiled/') ||
         !asset.endsWith('.json') ||
@@ -51,6 +68,27 @@ class MapDefinition {
           spawn.tileX >= widthInTiles ||
           spawn.tileY >= heightInTiles) {
         throw ArgumentError('Spawn is outside map bounds: $id/${entry.key}');
+      }
+    }
+    final ids = <String>{};
+    for (final exit in exits) {
+      for (final id in [
+        exit.id,
+        exit.destinationMapId,
+        exit.destinationSpawnId,
+        exit.returnSpawnId,
+      ]) {
+        _identifier(id);
+      }
+      if (!ids.add(exit.id) ||
+          !exit.tileX.isFinite ||
+          !exit.tileY.isFinite ||
+          exit.tileX < 0 ||
+          exit.tileY < 0 ||
+          exit.tileX + 1 > widthInTiles ||
+          exit.tileY + 1 > heightInTiles ||
+          !spawns.containsKey(exit.returnSpawnId)) {
+        throw ArgumentError('Invalid map exit: ${exit.id}');
       }
     }
   }
@@ -75,6 +113,11 @@ class MapRegistry {
       _maps[map.id] = map;
     }
     resolve(fallback.mapId, fallback.spawnId);
+    for (final map in _maps.values) {
+      for (final exit in map.exits) {
+        resolve(exit.destinationMapId, exit.destinationSpawnId);
+      }
+    }
   }
 
   MapDestination resolve(String mapId, String spawnId) {
@@ -107,6 +150,78 @@ class MapRegistry {
       widthInTiles: 50,
       heightInTiles: 50,
       spawns: {'start': const MapSpawn(2, 3)},
+    ),
+    MapDefinition(
+      id: 'prototype_village',
+      asset: 'tiled/prototype_village.json',
+      kind: MapKind.village,
+      widthInTiles: 16,
+      heightInTiles: 12,
+      spawns: {
+        'start': const MapSpawn(8, 6),
+        'forest_gate': const MapSpawn(11, 5),
+      },
+      exits: [
+        const MapExit(
+          id: 'forest_gate',
+          label: 'Forest',
+          tileX: 13,
+          tileY: 5,
+          destinationMapId: 'prototype_wilderness',
+          destinationSpawnId: 'village_gate',
+          returnSpawnId: 'forest_gate',
+        ),
+      ],
+    ),
+    MapDefinition(
+      id: 'prototype_wilderness',
+      asset: 'tiled/prototype_wilderness.json',
+      kind: MapKind.wilderness,
+      widthInTiles: 16,
+      heightInTiles: 12,
+      spawns: {
+        'village_gate': const MapSpawn(3, 5),
+        'dungeon_gate': const MapSpawn(11, 5),
+      },
+      exits: [
+        const MapExit(
+          id: 'village_gate',
+          label: 'Village',
+          tileX: 1,
+          tileY: 5,
+          destinationMapId: 'prototype_village',
+          destinationSpawnId: 'forest_gate',
+          returnSpawnId: 'village_gate',
+        ),
+        const MapExit(
+          id: 'dungeon_gate',
+          label: 'Dungeon',
+          tileX: 13,
+          tileY: 5,
+          destinationMapId: 'prototype_dungeon',
+          destinationSpawnId: 'forest_gate',
+          returnSpawnId: 'dungeon_gate',
+        ),
+      ],
+    ),
+    MapDefinition(
+      id: 'prototype_dungeon',
+      asset: 'tiled/prototype_dungeon.json',
+      kind: MapKind.dungeon,
+      widthInTiles: 16,
+      heightInTiles: 12,
+      spawns: {'forest_gate': const MapSpawn(3, 5)},
+      exits: [
+        const MapExit(
+          id: 'forest_gate',
+          label: 'Forest',
+          tileX: 1,
+          tileY: 5,
+          destinationMapId: 'prototype_wilderness',
+          destinationSpawnId: 'dungeon_gate',
+          returnSpawnId: 'forest_gate',
+        ),
+      ],
     ),
   ], fallback: TravelLocation('dev_dungeon', 'start'));
 }

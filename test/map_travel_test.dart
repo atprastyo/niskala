@@ -1,0 +1,135 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:niskala/model/game_session.dart';
+import 'package:niskala/model/map_registry.dart';
+import 'package:niskala/model/map_travel.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  GameSession start() => GameSession()
+    ..currentMapId = 'prototype_village'
+    ..currentSpawnId = 'start';
+
+  test('full travel loop retains resources and campaign state', () async {
+    final session = start()..health = 150;
+    session.stamina = 50;
+    session.progression.gainExp(20);
+    session.campaign.recordFact('talked_to_ratih');
+    final travel = MapTravel(session, MapRegistry.development);
+    final maps = <String>[];
+    for (final exit in [
+      'forest_gate',
+      'dungeon_gate',
+      'forest_gate',
+      'village_gate',
+    ]) {
+      expect(
+        await travel.travel(
+          exit,
+          (destination) async => maps.add(destination.map.id),
+        ),
+        isTrue,
+      );
+    }
+    expect(maps, [
+      'prototype_wilderness',
+      'prototype_dungeon',
+      'prototype_wilderness',
+      'prototype_village',
+    ]);
+    expect(session.currentSpawnId, 'forest_gate');
+    expect(session.health, 150);
+    expect(session.stamina, 50);
+    expect(session.progression.currentExp, 20);
+    expect(session.campaign.facts, {'talked_to_ratih'});
+    expect(
+      session.campaign.returnLocations['prototype_dungeon']!.mapId,
+      'prototype_wilderness',
+    );
+    expect(
+      session.campaign.returnLocations['prototype_dungeon']!.spawnId,
+      'dungeon_gate',
+    );
+  });
+
+  test(
+    'duplicate requests are locked and location commits only after ready',
+    () async {
+      final session = start();
+      final travel = MapTravel(session, MapRegistry.development);
+      final ready = Completer<void>();
+      final first = travel.travel('forest_gate', (_) => ready.future);
+      expect(travel.busy, isTrue);
+      expect(session.currentMapId, 'prototype_village');
+      expect(session.campaign.returnLocations, isEmpty);
+      expect(
+        await travel.travel('forest_gate', (_) async => fail('Duplicate load')),
+        isFalse,
+      );
+      ready.complete();
+      expect(await first, isTrue);
+      expect(session.currentMapId, 'prototype_wilderness');
+      expect(travel.busy, isFalse);
+    },
+  );
+
+  test(
+    'failed load leaves location and returns untouched and allows retry',
+    () async {
+      final session = start();
+      final travel = MapTravel(session, MapRegistry.development);
+      await expectLater(
+        travel.travel(
+          'forest_gate',
+          (_) async => throw StateError('Failed asset load'),
+        ),
+        throwsStateError,
+      );
+      expect(session.currentMapId, 'prototype_village');
+      expect(session.campaign.returnLocations, isEmpty);
+      expect(travel.busy, isFalse);
+      expect(await travel.travel('forest_gate', (_) async {}), isTrue);
+    },
+  );
+
+  test(
+    'all prototype spawns are walkable and separated from triggers',
+    () async {
+      for (final id in [
+        'prototype_village',
+        'prototype_wilderness',
+        'prototype_dungeon',
+      ]) {
+        final spawnId = id == 'prototype_village'
+            ? 'start'
+            : id == 'prototype_dungeon'
+            ? 'forest_gate'
+            : 'village_gate';
+        final map = MapRegistry.development.resolve(id, spawnId).map;
+        final asset =
+            jsonDecode(
+                  await rootBundle.loadString('assets/images/${map.asset}'),
+                )
+                as Map<String, dynamic>;
+        final tiles = ((asset['layers'] as List).first as Map)['data'] as List;
+        expect(asset['width'], map.widthInTiles);
+        expect(asset['height'], map.heightInTiles);
+        for (final spawn in map.spawns.values) {
+          expect(
+            tiles[spawn.tileY.toInt() * map.widthInTiles + spawn.tileX.toInt()],
+            isNot(1),
+          );
+          for (final exit in map.exits) {
+            expect(
+              (spawn.tileX - exit.tileX).abs() +
+                  (spawn.tileY - exit.tileY).abs(),
+              greaterThanOrEqualTo(2),
+            );
+          }
+        }
+      }
+    },
+  );
+}
