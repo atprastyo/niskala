@@ -1,0 +1,22 @@
+{
+  "accepted_date": "2026-11-08",
+  "source": "assets/images/player/arka",
+  "sha256": {
+    "attack_1/attack1_down.png": "51a6885ef0c52bda7a8ad9a309e8164b6a27adcd83b7717a34ca31d250217969",
+    "attack_1/attack1_left.png": "5755ca0e78160ae04cd33295580036b43323e582827faff0e756c0def48cf43b",
+    "attack_1/attack1_right.png": "c217502c86814995cc053f5ab4ac1956020b3f46c2af9605fe7f53f1397b254f",
+    "attack_1/attack1_up.png": "6d0a98834510a0689316d0b5a594aa5058d82870380afbb5a7f0b2b247fa5817",
+    "attack_2/attack2_down.png": "2b7d14a77093e2e20c5748041fa96e9cb8934bedc89968583ad16db76cac3e93",
+    "attack_2/attack2_left.png": "6f994fd3095d5a2a17ab7d8c45567aa2ced15fada9593918fbc7d63dcb62f527",
+    "attack_2/attack2_right.png": "26e929e4133850b6e1d60e544099b2098addf7a10d559a05ea060a40eb116539",
+    "attack_2/attack2_up.png": "03a8e2f99b20a32b01b6587b5d5a78fff89e1fc41878346145e6c2f3166b1bd4",
+    "idle/idle_down.png": "a43310c4a05251943039346f4ba12e1fc5d9282029776f9eb15698495546e80b",
+    "idle/idle_left.png": "1c8fa26b5e8375537bac4da5e8660693a5c259fac4663e58b226ee9883e92391",
+    "idle/idle_right.png": "91d01d02d73dbed1d3fdbdd105ef8486411cb7e4c57f535206f2173ef463dbed",
+    "idle/idle_up.png": "df7b129152db93839de202f906ff9ef781e81c4fc9d9cafc0915685639a40e12",
+    "run/run_down.png": "887fc01ba1d28915ee5e1b27dfa9b4d6e7458882907e9d2931495a45b1f537a0",
+    "run/run_left.png": "be81394cc75b022381c4885a6bf5cddf0350b7362bfe44ba3c822a73b849ab49",
+    "run/run_right.png": "94f43edaf7adb5fa66621928c72ef97e9f5ef054c262e4fb3c58b79f2bf8be79",
+    "run/run_up.png": "38ba4f1a9ae110f87aa433e6c2f3a7918e19d7013787ba2a6c37ed3266b92876"
+  }
+}

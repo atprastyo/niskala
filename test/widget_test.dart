@@ -35,7 +35,7 @@ void main() {
         (tester.widget(gameWidgetFinder) as dynamic).game as BonfireGame;
     final knight = gameRef.player! as Knight;
     expect(knight.size, Vector2.all(tileSize * Knight.spriteScale));
-    expect(knight.animation!.animationSize, Vector2.all(48));
+    expect(knight.animation!.animationSize, Vector2.all(192));
     expect(knight.animation!.canIdleUp, isTrue);
     expect(knight.animation!.canIdleDown, isTrue);
     expect(knight.animation!.canRunUp, isTrue);
@@ -130,7 +130,8 @@ void main() {
     expect(knight.stamina, 85); // queued, not deducted yet
     await advance(20); // attack_1 finishes, attack_2 triggers
     expect(knight.isAttacking, isTrue);
-    expect(knight.stamina, lessThan(100)); // attack_2 spent stamina (partially regenerated)
+    expect(knight.stamina,
+        lessThan(100)); // attack_2 spent stamina (partially regenerated)
     await advance(25); // attack_2 finishes
     expect(knight.isAttacking, isFalse);
 

@@ -21,6 +21,14 @@ The story documents are design drafts. Proposed names and balance targets are di
 
 - [General and character design guidelines](design-guidelines.md).
 - [Active Arka player sprites](player-sprites.md).
+- [Arka interior detailing and export](arka-detail-pass.md).
+- [Arka face and sword refinement](arka-face-sword.md).
+- [Arka bold outline](arka-outline.md).
+- [Arka black-to-brown hair](arka-hair.md).
+- [Current Arka hairstyle and blue outfit](arka-outfit.md).
+- [Arka HD generation and export](arka-hd-generation.md).
 - [Dungeon design guidelines](dungeon-design-guidelines.md).
 - [Dungeon tileset and HD migration](dungeon-tileset.md).
 - [Legacy male hero generation notes](male-hero-generation.md).
+
+- [Accepted Arka design snapshot — 2026-11-08](art/arka-approved-2026-11-08/README.md).

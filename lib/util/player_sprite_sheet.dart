@@ -1,9 +1,11 @@
 import 'package:bonfire/bonfire.dart';
 
 class PlayerSpriteSheet {
-  static const frameSize = 48.0;
-  static const sheetFrameWidth = 96.0;
-  static const sheetFrameHeight = 80.0;
+  // HD source resolution; world-space size and attack offsets are unchanged.
+  static const resolutionScale = 4.0;
+  static const frameSize = 48.0 * resolutionScale;
+  static const sheetFrameWidth = 96.0 * resolutionScale;
+  static const sheetFrameHeight = 80.0 * resolutionScale;
 
   static Future<SpriteAnimation> _heroAnimation(
     String action, {
@@ -27,7 +29,8 @@ class PlayerSpriteSheet {
         for (final frame in animation.frames)
           Sprite(
             frame.sprite.image,
-            srcPosition: frame.sprite.srcPosition + Vector2(24, 16),
+            srcPosition:
+                frame.sprite.srcPosition + Vector2(24, 16) * resolutionScale,
             srcSize: Vector2.all(frameSize),
           ),
       ],
