@@ -117,16 +117,16 @@ Registry increment — 2026-11-09: immutable map definitions now identify asset,
 
 Travel increment — 2026-11-09: use **Travel prototype** in the main menu to enter three separate village, wilderness, and dungeon blockouts. Cyan labeled portals connect them in both directions. The original sandbox remains the New Game default. Source scenes pause during loading; the destination must report ready before location/return records commit. Duplicate requests and saving are blocked during loading. Portal spacing and a one-second arrival grace prevent immediate return activation. A failed preflight or readiness timeout retains the old scene; existing resources and campaign data are preserved.
 
-P02 remains open for game-over checkpoint recovery and future quest/interaction requirements on transitions. Prototype portals are currently unrestricted. Runtime tests cover portal contact, the complete travel loop, keyboard input after travel, duplicate requests, idle arrival, invalid exits, and a missing destination asset. These empty blockouts do not establish combat/spawn-exclusion behavior or target-device performance.
+P02 prototype behavior is implemented, including checkpoint recovery and optional fact requirements on exits. Prototype portals remain unrestricted by default; production quest gates will supply the relevant facts in P05. Runtime tests cover portal contact, the complete travel loop, keyboard input after travel, duplicate requests, idle arrival, invalid exits, and a missing destination asset. These empty blockouts do not establish combat/spawn-exclusion behavior or target-device performance.
 
 - [x] Add map definitions for mainland regions, village interiors, dungeons, and the preserved sandbox. Each definition identifies its asset and valid named spawns. Prototype definitions exercise all four map kinds; production regions remain later content work.
 - [x] Create three simple test maps: a village area, a wilderness area, and a dungeon room. Use existing or placeholder art.
-- [ ] Add transition objects with destination map, destination spawn, return entrance, and interaction requirements. Support village gates and dungeon portals through the same validated transition boundary.
+- [x] Add transition objects with destination map, destination spawn, return entrance, and interaction requirements. Support village gates and dungeon portals through the same validated transition boundary.
 - [x] Add loading/fade behavior, prevent duplicate activation, and disable input while the destination is not ready. Uses a loading overlay with paused scenes and explicit focus restoration.
 - [x] Place Arka at a validated arrival point, clear of collision and hostile spawn exclusions, with arrival protection against immediately retriggering the return trigger. Verified for the empty prototype maps; later hostile habitats must preserve these arrival zones.
 - [x] Restore the correct mainland entrance when leaving a village or dungeon. Keep health, stamina, XP, inventory, and quest facts unchanged except for explicit gameplay rules. Prototype routes preserve the same session.
 - [x] Handle missing maps, invalid spawns, or loading failure by retaining or restoring a valid safe scene and state. Registry validation, asset preflight, and readiness timeout provide recovery; real-device fault testing remains useful.
-- [ ] Adapt game-over navigation so rebuilding a scene does not accidentally start a new campaign. Recovery destination and restored resources become explicit rules.
+- [x] Adapt game-over navigation so rebuilding a scene does not accidentally start a new campaign. The menu-hosted game retains the same session, loads the checkpoint, and restores full health/stamina without XP or item penalties. Failed recovery retains the old scene and provides Retry recovery.
 
 Exit condition: village → wilderness → dungeon → wilderness → village works repeatedly, including rapid trigger re-entry and a failed destination load.
 
@@ -134,12 +134,12 @@ Exit condition: village → wilderness → dungeon → wilderness → village wo
 
 Dependencies: P01–P02.
 
-Storage increment implemented ahead of scene integration: versioned session encryption with AES-256-GCM, a platform secure-storage key adapter, native encrypted files, validated backup recovery, and focused storage tests. Native New Game/Continue and manual Save at entrance now support the existing sandbox, restoring player stats/resources at its entrance while resetting encounters. A game widget test exercises saving without reconstructing the actor. See [encrypted saves](encrypted-saves.md). Campaign checkpoint semantics, world-state persistence, map-registry validation, OS-plugin smoke tests, and automatic save triggers remain pending; P03 is not complete.
+Storage increment implemented ahead of scene integration: versioned session encryption with AES-256-GCM, a platform secure-storage key adapter, native encrypted files, validated backup recovery, and focused storage tests. Native New Game/Continue and manual Save at entrance now support the existing sandbox, restoring player stats/resources at its entrance while resetting encounters. A game widget test exercises saving without reconstructing the actor. See [encrypted saves](encrypted-saves.md). Manual Save at entrance now records a validated checkpoint; failed writes restore the previous checkpoint. Defeat recovery preserves the session and refills resources after successful loading. Automatic save triggers, persistent encounter actors, and OS-plugin smoke tests remain pending; P03 is not complete.
 
-- [ ] Choose local persistence and add a versioned save schema, validation, and recovery behavior for missing or invalid saves.
+- [x] Choose local persistence and add a versioned save schema, validation, and recovery behavior for missing or invalid saves.
 - [ ] Persist player state, discovered map/spawn IDs, checkpoint, and transition return records.
-- [ ] Provide new-game and continue paths; make starting a fresh campaign an explicit action rather than a side effect of changing maps or dying.
-- [ ] Define death recovery at a safe checkpoint, preserving story items and completed milestones. Decide any resource penalty separately.
+- [x] Provide new-game and continue paths; make starting a fresh campaign an explicit action rather than a side effect of changing maps or dying. Verified for the menu-hosted game.
+- [x] Define death recovery at a safe checkpoint, preserving story items and completed milestones. Initial rule: full health/stamina restoration with no XP or inventory penalty; encounters reconstruct.
 - [ ] Save on stable transitions/checkpoints and later extend the same mechanism to boss/reward commits. Avoid saving a half-loaded destination as a valid arrival.
 - [ ] Test save → process restart → continue, save during a transition request, missing data, incompatible versions, and death recovery.
 

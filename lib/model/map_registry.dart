@@ -16,9 +16,11 @@ class MapSpawn {
 }
 
 class MapExit {
+  final String? requiredFact;
   final String id, label, destinationMapId, destinationSpawnId, returnSpawnId;
   final double tileX, tileY;
   const MapExit({
+    this.requiredFact,
     required this.id,
     required this.label,
     required this.tileX,
@@ -72,6 +74,7 @@ class MapDefinition {
     }
     final ids = <String>{};
     for (final exit in exits) {
+      if (exit.requiredFact != null) _identifier(exit.requiredFact!);
       for (final id in [
         exit.id,
         exit.destinationMapId,

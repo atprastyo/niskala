@@ -6,6 +6,9 @@ import 'package:niskala/game.dart';
 import 'package:niskala/main.dart';
 import 'package:niskala/model/game_session.dart';
 import 'package:niskala/model/map_registry.dart';
+import 'package:niskala/model/map_travel.dart';
+import 'package:niskala/util/localization/my_localizations.dart';
+import 'package:niskala/util/localization/strings_location.dart';
 import 'package:niskala/model/campaign_state.dart';
 import 'package:niskala/player/knight.dart';
 import 'package:niskala/util/sounds.dart';
@@ -16,6 +19,7 @@ void main() {
     tester,
   ) async {
     Sounds.enabled = false;
+    await MyLocalizations(const Locale('en')).load();
     Game.useJoystick = false;
     addTearDown(() => Game.useJoystick = true);
     final session = GameSession()
@@ -51,6 +55,7 @@ void main() {
     expect(player(), isNot(same(initial)));
     expect(player().session, same(session));
     expect(player().life.value, 150);
+    MapTravel(session, MapRegistry.development).setCheckpoint();
     expect(session.progression.currentExp, 20);
     // Remaining idle at arrival must not trigger the reverse portal.
     await advance(40);
@@ -79,6 +84,18 @@ void main() {
     await advance(5);
     expect(player(), same(arrived));
     expect(session.currentMapId, 'prototype_village');
+    expect(session.campaign.facts, {'travel_test'});
+    player().life.remove(player().life.max);
+    await advance(15);
+    await tester.tap(
+      find.widgetWithText(ElevatedButton, getString('play_again_cap')),
+    );
+    await advance(60);
+    expect(session.currentMapId, 'prototype_wilderness');
+    expect(session.currentSpawnId, 'village_gate');
+    expect(player().session, same(session));
+    expect(player().life.value, player().progression.maxLife);
+    expect(session.progression.currentExp, 20);
     expect(session.campaign.facts, {'travel_test'});
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
@@ -114,7 +131,9 @@ void main() {
         spawns: {'start': const MapSpawn(3, 5)},
       ),
     ], fallback: TravelLocation('prototype_village', 'start'));
+    session.currentMapId = 'prototype_village';
     session.currentSpawnId = 'start';
+    session.health = 150;
     await tester.pumpWidget(
       MaterialApp(
         home: SavedGame(session: session, registry: broken),
@@ -131,6 +150,23 @@ void main() {
       find.text('Could not travel. You are still in the previous area.'),
       findsOneWidget,
     );
+    session.checkpointMapId = 'missing_map';
+    session.checkpointSpawnId = 'start';
+    player().life.remove(player().life.max);
+    await advance(15);
+    await tester.tap(
+      find.widgetWithText(ElevatedButton, getString('play_again_cap')),
+    );
+    await advance(15);
+    expect(player(), same(beforeFailure));
+    expect(session.health, 0);
+    expect(find.text('Retry recovery'), findsOneWidget);
+    session.checkpointMapId = 'prototype_village';
+    await tester.tap(find.text('Retry recovery'));
+    await advance(60);
+    expect(player(), isNot(same(beforeFailure)));
+    expect(player().session, same(session));
+    expect(player().life.value, player().progression.maxLife);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });

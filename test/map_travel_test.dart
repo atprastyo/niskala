@@ -5,12 +5,112 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niskala/model/game_session.dart';
 import 'package:niskala/model/map_registry.dart';
 import 'package:niskala/model/map_travel.dart';
+import 'package:niskala/model/campaign_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test(
+    'exit requirements are checked before loading or changing location',
+    () async {
+      final map = MapDefinition(
+        id: 'test_map',
+        asset: 'tiled/map.json',
+        kind: MapKind.sandbox,
+        widthInTiles: 50,
+        heightInTiles: 50,
+        spawns: {'start': const MapSpawn(2, 3)},
+        exits: [
+          const MapExit(
+            id: 'gate',
+            label: 'Gate',
+            tileX: 5,
+            tileY: 5,
+            destinationMapId: 'test_map',
+            destinationSpawnId: 'start',
+            returnSpawnId: 'start',
+            requiredFact: 'permission_received',
+          ),
+        ],
+      );
+      final registry = MapRegistry([
+        map,
+      ], fallback: TravelLocation('test_map', 'start'));
+      final session = GameSession()..currentMapId = 'test_map';
+      final travel = MapTravel(session, registry);
+      await expectLater(
+        travel.travel('gate', (_) async => fail('Locked exit loaded')),
+        throwsStateError,
+      );
+      expect(session.campaign.returnLocations, isEmpty);
+      session.campaign.recordFact('permission_received');
+      expect(await travel.travel('gate', (_) async {}), isTrue);
+    },
+  );
   GameSession start() => GameSession()
     ..currentMapId = 'prototype_village'
     ..currentSpawnId = 'start';
+
+  test(
+    'defeat recovery preserves the campaign and refills resources at checkpoint',
+    () async {
+      final session = start();
+      session.progression.gainExp(20);
+      session.campaign.addItem('potion', quantity: 2);
+      session.campaign.receiveIngredient('boss_01', 'daun_embun');
+      final travel = MapTravel(session, MapRegistry.development);
+      travel.setCheckpoint();
+      await travel.travel('forest_gate', (_) async {});
+      session.health = 0;
+      session.stamina = 5;
+      await travel.recover((destination) async {
+        expect(destination.map.id, 'prototype_village');
+        expect(session.currentMapId, 'prototype_wilderness');
+        expect(travel.busy, isTrue);
+        expect(session.health, session.progression.maxLife);
+      });
+      expect(session.currentMapId, 'prototype_village');
+      expect(session.currentSpawnId, 'start');
+      expect(session.health, session.progression.maxLife);
+      expect(session.stamina, session.progression.maxStamina);
+      expect(session.progression.currentExp, 20);
+      expect(session.campaign.inventory['potion'], 2);
+      expect(session.campaign.ingredients, {'daun_embun'});
+      expect(
+        await travel.recover((_) async => fail('Alive recovery')),
+        isFalse,
+      );
+    },
+  );
+
+  test('failed recovery rolls back resources and permits retry', () async {
+    final session = start()..health = 0;
+    session.stamina = 5;
+    final travel = MapTravel(session, MapRegistry.development);
+    await expectLater(
+      travel.recover((_) async => throw StateError('Unavailable')),
+      throwsStateError,
+    );
+    expect(session.health, 0);
+    expect(session.stamina, 5);
+    expect(session.currentMapId, 'prototype_village');
+    expect(travel.busy, isFalse);
+    expect(await travel.recover((_) async {}), isTrue);
+  });
+
+  test(
+    'unavailable checkpoint uses and records the registered fallback',
+    () async {
+      final session = start()..health = 0;
+      session.checkpointMapId = 'removed_map';
+      final travel = MapTravel(session, MapRegistry.development);
+      await travel.recover((destination) async {
+        expect(destination.map.id, 'dev_dungeon');
+      });
+      expect(session.checkpointMapId, 'dev_dungeon');
+      expect(session.checkpointSpawnId, 'start');
+    },
+  );
 
   test('full travel loop retains resources and campaign state', () async {
     final session = start()..health = 150;

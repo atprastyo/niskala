@@ -53,15 +53,7 @@ class _SavedGameState extends State<SavedGame> {
           if (!ready.isCompleted) ready.complete();
         }
       },
-      onRestart: () => Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => SavedGame(
-            session: GameSession(),
-            repository: widget.repository,
-            registry: widget.registry,
-          ),
-        ),
-      ),
+      onRestart: _recover,
     );
     return scene;
   }
@@ -87,18 +79,23 @@ class _SavedGameState extends State<SavedGame> {
   }
 
   Future<void> _go(String exitId) async {
-    if (_changing ||
-        _saving ||
-        widget.session.health <= 0 ||
-        _scenes.single.engine == null) {
-      return;
-    }
+    if (widget.session.health <= 0) return;
+    await _change((load) => _travel.travel(exitId, load));
+  }
+
+  Future<void> _recover() => _change(_travel.recover, recovery: true);
+
+  Future<void> _change(
+    Future<bool> Function(Future<void> Function(MapDestination)) operation, {
+    bool recovery = false,
+  }) async {
+    if (_changing || _saving || _scenes.single.engine == null) return;
     final old = _scenes.single;
     final health = widget.session.health, stamina = widget.session.stamina;
     old.engine!.pauseEngine();
     setState(() => _changing = true);
     try {
-      final changed = await _travel.travel(exitId, _load);
+      final changed = await operation(_load);
       if (!mounted) return;
       if (changed) {
         final arrived = _scenes.last;
@@ -122,7 +119,11 @@ class _SavedGameState extends State<SavedGame> {
         }
       });
       old.engine!.resumeEngine();
-      _message('Could not travel. You are still in the previous area.');
+      _message(
+        recovery
+            ? 'Could not recover. Retry checkpoint recovery.'
+            : 'Could not travel. You are still in the previous area.',
+      );
     } finally {
       if (mounted) {
         setState(() => _changing = false);
@@ -153,10 +154,15 @@ class _SavedGameState extends State<SavedGame> {
       return;
     }
     setState(() => _saving = true);
+    final oldCheckpointMap = widget.session.checkpointMapId;
+    final oldCheckpointSpawn = widget.session.checkpointSpawnId;
     try {
+      _travel.setCheckpoint();
       await widget.repository!.save(widget.session);
       if (mounted) _message('Saved. Continue returns to this area’s entrance.');
     } catch (_) {
+      widget.session.checkpointMapId = oldCheckpointMap;
+      widget.session.checkpointSpawnId = oldCheckpointSpawn;
       if (mounted) {
         _message('Could not save. Try again.');
       }
@@ -194,6 +200,11 @@ class _SavedGameState extends State<SavedGame> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (widget.session.health <= 0)
+                  ElevatedButton(
+                    onPressed: _changing || _saving ? null : _recover,
+                    child: const Text('Retry recovery'),
+                  ),
                 if (widget.repository != null)
                   ElevatedButton(
                     onPressed: _saving || _changing ? null : _save,

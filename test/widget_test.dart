@@ -193,6 +193,8 @@ void main() {
         (tester.widget(gameWidgetFinder) as dynamic).game as BonfireGame;
     expect(afterRestart.player, isNot(same(knight)));
     expect((afterRestart.player! as Knight).session.health, greaterThan(0));
+    expect((afterRestart.player! as Knight).session, same(session));
+    expect((afterRestart.player! as Knight).progression.currentExp, 20);
     expect(
       (await tester.runAsync(
         () => repository.load(),
