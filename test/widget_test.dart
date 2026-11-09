@@ -39,6 +39,14 @@ void main() {
         home: SavedGame(session: session, repository: repository),
       ),
     );
+    expect(
+      tester
+          .widget<ElevatedButton>(
+            find.widgetWithText(ElevatedButton, 'Save at entrance'),
+          )
+          .onPressed,
+      isNull,
+    );
     await advance(70);
     expect(find.byType(Game), findsOneWidget);
     final gameWidgetFinder = find.byWidgetPredicate(

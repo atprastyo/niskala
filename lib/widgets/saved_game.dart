@@ -1,7 +1,6 @@
+import 'package:niskala/util/map_asset_validation.dart';
 import 'dart:async';
-import 'dart:convert';
 import 'package:bonfire/bonfire.dart';
-import 'package:flutter/services.dart';
 import 'package:niskala/model/map_registry.dart';
 import 'package:niskala/model/map_travel.dart';
 import 'package:niskala/util/sounds.dart';
@@ -48,6 +47,15 @@ class _SavedGameState extends State<SavedGame> {
       focusNode: scene.focus,
       onReady: (engine) {
         scene.engine = engine;
+        if (ready == null) {
+          widget.session.campaign.recordArrival(
+            destination.map.id,
+            destination.spawnId,
+          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() {});
+          });
+        }
         if (ready != null) {
           engine.pauseEngine();
           if (!ready.isCompleted) ready.complete();
@@ -59,17 +67,7 @@ class _SavedGameState extends State<SavedGame> {
   }
 
   Future<void> _load(MapDestination destination) async {
-    final data =
-        jsonDecode(
-              await rootBundle.loadString(
-                'assets/images/${destination.map.asset}',
-              ),
-            )
-            as Map<String, dynamic>;
-    if (data['width'] != destination.map.widthInTiles ||
-        data['height'] != destination.map.heightInTiles) {
-      throw const FormatException('Map dimensions do not match registry');
-    }
+    await validateMapAsset(destination);
     if (!mounted) throw StateError('Game closed');
     final ready = Completer<void>();
     final candidate = _makeScene(destination, ready);
@@ -173,7 +171,12 @@ class _SavedGameState extends State<SavedGame> {
   }
 
   Future<void> _save() async {
-    if (_saving || _changing || widget.repository == null) return;
+    if (_saving ||
+        _changing ||
+        widget.repository == null ||
+        _scenes.single.engine == null) {
+      return;
+    }
     if (widget.session.health <= 0) {
       _message('Cannot save after defeat.');
       return;
@@ -238,7 +241,10 @@ class _SavedGameState extends State<SavedGame> {
                   ),
                 if (widget.repository != null)
                   ElevatedButton(
-                    onPressed: _saving || _changing ? null : _save,
+                    onPressed:
+                        _saving || _changing || _scenes.single.engine == null
+                        ? null
+                        : _save,
                     child: Text(_saving ? 'Saving…' : 'Save at entrance'),
                   ),
                 const SizedBox(width: 8),

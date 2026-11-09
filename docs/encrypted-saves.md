@@ -8,6 +8,8 @@ After a successful map transition, the native game automatically saves the commi
 
 Web retains New Game without save controls; a conditional factory keeps native file imports out of the browser build. The native repository is initialized lazily when entering a game or continuing. Setup or load failures display a retryable error; key access during manual saving is also reported without leaving the game.
 
+Continue now preflights the current location's map, external tileset JSON, and decoded image before opening the game. Missing or corrupt assets fall back to the saved checkpoint, then the registered safe entrance. If all candidates fail, Continue reports failure and retains the original save. Manual saving is also disabled until the initial scene reports ready.
+
 ## Format and key ownership
 
 Each version-1 envelope contains a version, random 12-byte nonce, ciphertext, and authentication tag. AES-256-GCM authenticates the encrypted versioned session payload and the fixed format identifier. Keys are randomly generated and held separately by `flutter_secure_storage` under `niskala_save_key_v1`. No plaintext save or plaintext temporary file is written.
@@ -15,6 +17,8 @@ Each version-1 envelope contains a version, random 12-byte nonce, ciphertext, an
 The encrypted payload contains level, XP, current health/stamina, map/spawn/checkpoint IDs, claimed reward IDs, and versioned campaign records. Older version-1 payloads without reward claims or campaign records load with empty defaults. Unknown versions, invalid resource bounds, invalid IDs, and inconsistent XP are rejected. The registry checks map/spawn existence when continuing; asset-load failure and collision-free arrival verification remain future work.
 
 Campaign records hold ordinary inventory quantities, owned equipment references, quest/interaction facts, discoveries, completed quest IDs, boss/ingredient ownership, habitat cooldown seconds, and named return map/spawn pairs. Ingredients remain separate from ordinary consumable inventory. Duplicate boss/ingredient assignments, negative cooldowns, invalid quantities, and unowned equipment references are rejected. Cooldown records do not run a clock; prototype map transitions record the source return entrance after a successful load. Existing sandbox potions/keys and encounters still reset on Continue because their actors do not yet emit campaign events.
+
+Discovered locations are a map-ID → spawn-ID set in campaign records. The initial ready scene, successful travel/recovery, and validated checkpoints record arrivals. Failed loads do not discover their destinations. Older version-1 campaign records without this optional field remain compatible.
 
 Enemy reward IDs identify one spawned life. A repeated defeat notification for that life cannot award XP again after loading. Current sandbox loading still creates fresh enemy lives and resets encounters. Persistent populations and claim retention/pruning for a large campaign remain future work; claims currently accumulate in the save.
 
@@ -41,3 +45,5 @@ Package configuration references: [flutter_secure_storage](https://pub.dev/packa
 ## Verification
 
 Tests use actual temporary encrypted files and an in-memory key-store substitute. They cover round trips, plaintext absence, fresh nonces, encrypted backups, ciphertext tampering, recovery, missing keys, concurrent requests, and invalid state. These tests do not exercise the OS Keychain/Keystore plugin.
+
+The Continue widget test reconstructs the menu and repository twice, reads real encrypted files, verifies progression/inventory/ingredients/discovered entrances/return records, travels and autosaves, then continues again. This simulates application reconstruction; it does not claim an actual OS process restart or platform-key-store smoke test.

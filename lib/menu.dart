@@ -1,10 +1,11 @@
+import 'package:niskala/storage/continue_game.dart';
+import 'package:niskala/util/map_asset_validation.dart';
 import 'dart:async' as async;
 
 import 'package:bonfire/bonfire.dart';
 import 'package:niskala/game.dart';
 import 'package:niskala/model/game_session.dart';
 import 'package:niskala/model/map_registry.dart';
-import 'package:niskala/model/campaign_state.dart';
 import 'package:niskala/storage/save_factory.dart';
 import 'package:niskala/storage/save_repository.dart';
 import 'package:niskala/widgets/saved_game.dart';
@@ -20,8 +21,10 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class Menu extends StatefulWidget {
+  final Future<SaveRepository> Function()? saveRepositoryFactory;
+  const Menu({super.key, this.saveRepositoryFactory});
   @override
-  _MenuState createState() => _MenuState();
+  State<Menu> createState() => _MenuState();
 }
 
 class _MenuState extends State<Menu> {
@@ -37,14 +40,18 @@ class _MenuState extends State<Menu> {
     try {
       final repository = kIsWeb
           ? null
-          : await (_repository ??= createNativeSaveRepository());
+          : await (_repository ??=
+                (widget.saveRepositoryFactory ?? createNativeSaveRepository)());
       var session = GameSession();
       if (prototype) {
         session.currentMapId = session.checkpointMapId = 'prototype_village';
         session.currentSpawnId = session.checkpointSpawnId = 'start';
       }
       if (continuing) {
-        final loaded = await repository!.load();
+        final loaded = await ContinueGame(
+          MapRegistry.development,
+          validateMapAsset,
+        ).load(repository!);
         if (!mounted) return;
         if (loaded == null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -53,17 +60,7 @@ class _MenuState extends State<Menu> {
           return;
         }
         session = loaded.session;
-        if (session.health <= 0) {
-          throw const SaveException('Saved player is defeated.');
-        }
-        final destination = MapRegistry.development.resolveSavedLocation(
-          TravelLocation(session.currentMapId, session.currentSpawnId),
-          TravelLocation(session.checkpointMapId, session.checkpointSpawnId),
-        );
-        if (destination.map.id != session.currentMapId ||
-            destination.spawnId != session.currentSpawnId) {
-          session.currentMapId = destination.map.id;
-          session.currentSpawnId = destination.spawnId;
+        if (loaded.relocated) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -102,7 +99,7 @@ class _MenuState extends State<Menu> {
 
   bool showSplash = true;
   int currentPosition = 0;
-  late async.Timer _timer;
+  async.Timer? _timer;
   List<Future<SpriteAnimation>> sprites = [
     PlayerSpriteSheet.idleRight(),
     EnemySpriteSheet.goblinIdleRight(),
@@ -114,7 +111,7 @@ class _MenuState extends State<Menu> {
   @override
   void dispose() {
     Sounds.stopBackgroundSound();
-    _timer.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 

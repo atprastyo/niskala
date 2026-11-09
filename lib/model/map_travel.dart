@@ -19,6 +19,7 @@ class MapTravel {
     );
     session.checkpointMapId = location.map.id;
     session.checkpointSpawnId = location.spawnId;
+    session.campaign.recordArrival(location.map.id, location.spawnId);
   }
 
   Future<bool> recover(Future<void> Function(MapDestination) load) async {
@@ -39,6 +40,7 @@ class MapTravel {
       session.health = session.progression.maxLife;
       session.stamina = session.progression.maxStamina;
       await load(destination);
+      session.campaign.recordArrival(destination.map.id, destination.spawnId);
       session.currentMapId = session.checkpointMapId = destination.map.id;
       session.currentSpawnId = session.checkpointSpawnId = destination.spawnId;
       return true;
@@ -74,6 +76,7 @@ class MapTravel {
     _busy = true;
     try {
       await load(destination);
+      session.campaign.recordArrival(destination.map.id, destination.spawnId);
       session.campaign.setReturnLocation(
         destination.map.id,
         TravelLocation(source.id, exit.returnSpawnId),

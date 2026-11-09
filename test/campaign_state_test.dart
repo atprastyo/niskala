@@ -4,6 +4,21 @@ import 'package:niskala/model/game_events.dart';
 import 'package:niskala/model/game_session.dart';
 
 void main() {
+  test('discovered entrances persist as independent, read-only records', () {
+    final state = CampaignState();
+    expect(state.recordArrival('village', 'gate'), isTrue);
+    expect(state.recordArrival('village', 'gate'), isFalse);
+    final snapshot = state.toJson();
+    state.recordArrival('village', 'home');
+    final restored = CampaignState.fromJson(snapshot);
+    expect(restored.discoveredLocations['village'], {'gate'});
+    expect(
+      () => restored.discoveredLocations['village']!.clear(),
+      throwsUnsupportedError,
+    );
+    final legacy = state.toJson()..remove('locations');
+    expect(CampaignState.fromJson(legacy).discoveredLocations, isEmpty);
+  });
   test('campaign facts are idempotent and sessions remain independent', () {
     final session = GameSession();
     final events = <CampaignEvent>[

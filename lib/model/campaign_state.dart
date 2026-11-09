@@ -20,6 +20,7 @@ class CampaignState {
   final Map<String, String> _equipment = {};
   final Set<String> _facts = {};
   final Set<String> _discoveredRegions = {};
+  final Map<String, Set<String>> _discoveredLocations = {};
   final Set<String> _completedQuests = {};
   final Map<String, String> _bossIngredients = {};
   final Map<String, int> _habitatCooldowns = {};
@@ -29,6 +30,10 @@ class CampaignState {
   Map<String, String> get equipment => Map.unmodifiable(_equipment);
   Set<String> get facts => Set.unmodifiable(_facts);
   Set<String> get discoveredRegions => Set.unmodifiable(_discoveredRegions);
+  Map<String, Set<String>> get discoveredLocations => Map.unmodifiable({
+    for (final entry in _discoveredLocations.entries)
+      entry.key: Set<String>.unmodifiable(entry.value),
+  });
   Set<String> get completedQuests => Set.unmodifiable(_completedQuests);
   Map<String, String> get bossIngredients => Map.unmodifiable(_bossIngredients);
   Set<String> get ingredients => Set.unmodifiable(_bossIngredients.values);
@@ -74,6 +79,12 @@ class CampaignState {
     return _discoveredRegions.add(regionId);
   }
 
+  bool recordArrival(String mapId, String spawnId) {
+    _id(mapId);
+    _id(spawnId);
+    return (_discoveredLocations[mapId] ??= <String>{}).add(spawnId);
+  }
+
   bool completeQuest(String questId) {
     _id(questId);
     return _completedQuests.add(questId);
@@ -108,6 +119,10 @@ class CampaignState {
     'equipment': Map<String, String>.of(_equipment),
     'facts': _facts.toList()..sort(),
     'regions': _discoveredRegions.toList()..sort(),
+    'locations': {
+      for (final entry in _discoveredLocations.entries)
+        entry.key: entry.value.toList()..sort(),
+    },
     'quests': _completedQuests.toList()..sort(),
     'bossIngredients': Map<String, String>.of(_bossIngredients),
     'cooldowns': Map<String, int>.of(_habitatCooldowns),
@@ -141,6 +156,13 @@ class CampaignState {
     }
     for (final region in data['regions'] as List<dynamic>) {
       state.discoverRegion(region as String);
+    }
+    for (final entry
+        in (data['locations'] as Map<String, dynamic>? ?? {}).entries) {
+      _id(entry.key);
+      for (final spawn in entry.value as List<dynamic>) {
+        state.recordArrival(entry.key, spawn as String);
+      }
     }
     for (final quest in data['quests'] as List<dynamic>) {
       state.completeQuest(quest as String);
